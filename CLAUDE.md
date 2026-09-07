@@ -7,23 +7,32 @@ and agent runs end to end.
 
 ## Stack
 
-Not chosen yet. Nothing is installed here and there is no package manager. When
-a stack lands, name the language, framework, data store, and hosting here - with
-the versions that matter - in the same pull request that adds it.
+Static HTML5 + CSS3, no JavaScript, no framework, no package manager, no build
+step. Hosted on GitHub Pages as a project site (served at
+`/<repository-name>/`, per `docs/research/pages-subpath.md`). All internal
+links are relative with no leading slash, for the same reason.
 
 ## Commands
 
-- Install: not applicable yet - no package manager in this repository.
-- Dev: not applicable yet.
-- Typecheck / lint / test / build: not defined yet. When the stack lands, define
-  all four and name them here.
+- Install: not applicable - no package manager, nothing to install.
+- Dev: open `index.html` directly in a browser, or serve the root with any
+  static file server (e.g. `python3 -m http.server`) to test relative paths
+  the way GitHub Pages will serve them.
+- Typecheck / lint / build: not applicable - plain static HTML/CSS has no
+  compile step.
+- Test: `bash tests/check.sh` - structural checks (file existence, relative
+  links, no tracking/form code) for each acceptance criterion that can be
+  scripted. Viewport/visual criteria are checked manually with devtools
+  mobile emulation, per the issue that added the page being checked.
 
-The four checks above are what CI runs once the gate is real. Until then it is
-not: `.github/workflows/ci.yml` ships a placeholder that checks the scaffolding
-is intact and fails the moment product code lands, because a project gets its
-gate before it gets its stack and a gate that goes green on untested code is
-worse than no gate. Replacing it is a step in building this project, not a
-chore to do later - the comment at the top of that file says how.
+There is one check above, `bash tests/check.sh` - typecheck, lint, and build
+don't apply to a static HTML/CSS site with no compile step. That one check is
+what CI runs once the gate is real. Until then it is not: `.github/workflows/ci.yml`
+ships a placeholder that checks the scaffolding is intact and fails the moment
+product code lands, because a project gets its gate before it gets its stack
+and a gate that goes green on untested code is worse than no gate. Replacing
+it is a step in building this project, not a chore to do later - the comment
+at the top of that file says how.
 
 Whatever the gate runs, the rule is the same. If a check is renamed here,
 rename it in `.github/workflows/ci.yml` in the same commit, and re-point the

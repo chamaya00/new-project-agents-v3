@@ -8,34 +8,35 @@ name: ci
 # request, so the diff gets read here before it runs here.
 #
 # ---------------------------------------------------------------------------
-# This ships as a placeholder gate, and it is meant to be replaced.
+# This is the real gate. It replaced the provisioning placeholder in the same
+# sitting that the stack landed, which is what the placeholder's own comment
+# asked for.
 #
-# A project gets its gate before it gets its stack. The reusable workflow's
-# Node path fails a named script that is not there rather than skipping it,
-# which is correct and which would make every pull request here red from the
-# provisioning one onward, before a line of product code exists. So the
-# commands path below checks the only thing that is true on day one: that the
-# scaffolding a session and an agent run both read is intact.
+# It stays on the `commands` path rather than the Node path, and that is not a
+# stopgap. There is no package.json here and there will not be one: the site is
+# hand-authored HTML and CSS served as-is, so the Node path's first step - find
+# a lockfile - would fail with nothing to fix. The reusable workflow carries
+# this path precisely so a repository without a package manager can still have
+# a gate.
 #
-# The last line is a tripwire, and it is the part that matters. The moment a
-# file appears that provisioning did not put here, product code has landed and
-# this gate does not test it - so the gate fails and says so, rather than going
-# green on work nothing checked. A gate that silently skips is not a gate, and
-# the failure mode this exists to stop is a placeholder nobody remembered to
-# replace, passing every pull request on its way to a release.
+# `check-name` is `static-site`, so the check reports as `ci / static-site`.
+# That string is what branch protection matches on. It replaced
+# `ci / scaffolding`, and the protection rule was re-pointed in the same
+# sitting - a required check that no longer reports blocks every merge instead
+# of gating them.
 #
-# Replace it as soon as the stack is chosen. Delete `check-name` and
-# `commands`, restore the two lines below, and re-point the branch protection
-# rule in the same sitting - the job name is the string protection matches on,
-# so a renamed check that no longer reports blocks every merge instead of
-# gating them.
+# One command, deliberately. `tests/check.sh` is where the checks live, so
+# adding one is a change to the script rather than to this file, and the same
+# command runs here and on a contributor's machine. If the script is missing or
+# unreadable the command fails, which is the behaviour we want: a gate that
+# cannot find its tests is not a gate that passes.
 #
-#     with:
-#       node-version: '20'
-#       checks: 'typecheck,lint,test,build'
-#
-# Provisioning onto a repository that already has those four scripts skips all
-# of this and starts on the Node path.
+# The tripwire that used to live here is gone, and it should be. It existed to
+# fail the moment product code landed on a repository whose gate tested
+# nothing. Product code has landed and the gate now tests it, so the tripwire
+# has done its job. What replaces its guarantee is the script: every acceptance
+# criterion that can be checked mechanically is checked there, and a page added
+# without a check for it is a gap in `tests/check.sh` to close, not a gap here.
 # ---------------------------------------------------------------------------
 
 on:
@@ -47,10 +48,6 @@ jobs:
   ci:
     uses: chamaya00/agent-factory/.github/workflows/ci.yml@v1.7.0
     with:
-      check-name: 'scaffolding'
+      check-name: 'static-site'
       commands: |
-        test -f CLAUDE.md
-        test -f .claude/agent-factory.json
-        test -d .claude/agents && test -d .claude/skills && test -d .claude/commands
-        test -d docs/research && test -d docs/design && test -d docs/decisions
-        unexpected="$(git ls-files | grep -Ev '^(README\.md|CLAUDE\.md|\.github/|\.claude/|docs/)' || true)"; if [ -n "$unexpected" ]; then echo "::error::Product code has landed and this placeholder gate does not test it: $unexpected. Restore the real checks and re-point branch protection in the same sitting - see the comment at the top of this file."; exit 1; fi
+        bash tests/check.sh
