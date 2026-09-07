@@ -25,12 +25,14 @@ links are relative with no leading slash, for the same reason.
   scripted. Viewport/visual criteria are checked manually with devtools
   mobile emulation, per the issue that added the page being checked.
 
-The four checks above are what CI runs once the gate is real. Until then it is
-not: `.github/workflows/ci.yml` ships a placeholder that checks the scaffolding
-is intact and fails the moment product code lands, because a project gets its
-gate before it gets its stack and a gate that goes green on untested code is
-worse than no gate. Replacing it is a step in building this project, not a
-chore to do later - the comment at the top of that file says how.
+There is one check above, `bash tests/check.sh` - typecheck, lint, and build
+don't apply to a static HTML/CSS site with no compile step. That one check is
+what CI runs once the gate is real. Until then it is not: `.github/workflows/ci.yml`
+ships a placeholder that checks the scaffolding is intact and fails the moment
+product code lands, because a project gets its gate before it gets its stack
+and a gate that goes green on untested code is worse than no gate. Replacing
+it is a step in building this project, not a chore to do later - the comment
+at the top of that file says how.
 
 Whatever the gate runs, the rule is the same. If a check is renamed here,
 rename it in `.github/workflows/ci.yml` in the same commit, and re-point the

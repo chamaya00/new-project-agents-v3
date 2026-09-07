@@ -21,18 +21,23 @@ check() {
   fi
 }
 
+# `!` is a shell keyword, recognised at parse time only - it cannot survive
+# expansion through check()'s "$@", so negated checks route through this
+# function instead of passing `!` as an argument.
+not() {
+  ! "$@"
+}
+
 check "index.html exists at repo root" test -f index.html
 check "about.html exists at repo root" test -f about.html
 check ".nojekyll exists at repo root" test -f .nojekyll
 
-check "no root-absolute href in index.html" \
-  ! grep -Eq 'href="/[^/]' index.html
-check "no root-absolute href in about.html" \
-  ! grep -Eq 'href="/[^/]' about.html
-check "no root-absolute stylesheet link in index.html" \
-  ! grep -Eq 'href="/[^/]' index.html
-check "no root-absolute stylesheet link in about.html" \
-  ! grep -Eq 'href="/[^/]' about.html
+check "no root-absolute href/src in index.html" \
+  not grep -Eq 'href="/[^/]|src="/[^/]' index.html
+check "no root-absolute href/src in about.html" \
+  not grep -Eq 'href="/[^/]|src="/[^/]' about.html
+check "no root-absolute url() in css/style.css" \
+  not grep -Eq 'url\(/[^/)]' css/style.css
 
 check "index.html nav marks Home as current" \
   grep -q 'href="index.html" aria-current="page"' index.html
@@ -40,12 +45,12 @@ check "about.html nav marks About as current" \
   grep -q 'href="about.html" aria-current="page"' about.html
 
 check "no off-repo <script src= in index.html" \
-  ! grep -Eq '<script[^>]+src="(https?:)?//' index.html
+  not grep -Eq '<script[^>]+src="(https?:)?//' index.html
 check "no off-repo <script src= in about.html" \
-  ! grep -Eq '<script[^>]+src="(https?:)?//' about.html
+  not grep -Eq '<script[^>]+src="(https?:)?//' about.html
 check "no form action= in index.html" \
-  ! grep -q '<form' index.html
+  not grep -q '<form' index.html
 check "no form action= in about.html" \
-  ! grep -q '<form' about.html
+  not grep -q '<form' about.html
 
 exit $fail
