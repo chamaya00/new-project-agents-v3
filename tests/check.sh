@@ -235,7 +235,142 @@ FIXTURE
   check "two projects render most-recent-first" \
     test "$order" = "Newer fixture project Older fixture project "
 
-  rm -rf "$neg_dir" "$pos_dir" "$list_dir"
+  # Home's Recent area (issue #19). Same rule as the listing fixtures above:
+  # the area is Liquid, so every assertion reads the built _site/index.html,
+  # never the template. Each subsection is one `<section class="recent">`, so
+  # a criterion about what appears *under a given heading* is checked against
+  # that block alone rather than the whole page - a title anywhere on Home
+  # would otherwise pass a check about the wrong subsection.
+  home_dir="$(mktemp -d)"
+  trap 'rm -rf "$neg_dir" "$pos_dir" "$list_dir" "$home_dir"' EXIT
+
+  recent_section() {
+    awk -v heading="$2" '
+      index($0, ">" heading "<") { inside = 1 }
+      inside { print }
+      inside && /<\/section>/ { exit }
+    ' "$1"
+  }
+
+  # Writes one _projects fixture file: dir, filename, title, date.
+  write_project() {
+    mkdir -p "$1/_projects"
+    cat > "$1/_projects/$2" <<FIXTURE
+---
+title: "$3"
+date: $4
+---
+<p>Fixture content.</p>
+FIXTURE
+  }
+
+  # One project and one post: each lands under its own heading.
+  copy_site_into "$home_dir/one-each"
+  write_project "$home_dir/one-each" "home-project.html" "Home fixture project" "2026-01-01"
+  mkdir -p "$home_dir/one-each/_posts"
+  cat > "$home_dir/one-each/_posts/2026-01-02-home-post.html" <<'FIXTURE'
+---
+title: "Home fixture post"
+---
+<p>Fixture content.</p>
+FIXTURE
+  (cd "$home_dir/one-each" && jekyll build --destination _site --quiet)
+  home_one_each="$home_dir/one-each/_site/index.html"
+  check "one project appears under Home's 'Recent projects'" \
+    grep -q 'Home fixture project' <(recent_section "$home_one_each" "Recent projects")
+  check "one post appears under Home's 'Recent posts'" \
+    grep -q 'Home fixture post' <(recent_section "$home_one_each" "Recent posts")
+  check "Home's Recent projects does not list posts" \
+    not grep -q 'Home fixture post' <(recent_section "$home_one_each" "Recent projects")
+
+  # Five projects, filenames sorting against date order on purpose: exactly the
+  # three most recent appear, newest first.
+  copy_site_into "$home_dir/five-projects"
+  write_project "$home_dir/five-projects" "a.html" "Project one" "2026-01-01"
+  write_project "$home_dir/five-projects" "b.html" "Project two" "2026-02-01"
+  write_project "$home_dir/five-projects" "c.html" "Project three" "2026-03-01"
+  write_project "$home_dir/five-projects" "d.html" "Project four" "2026-04-01"
+  write_project "$home_dir/five-projects" "e.html" "Project five" "2026-05-01"
+  (cd "$home_dir/five-projects" && jekyll build --destination _site --quiet)
+  home_five="$home_dir/five-projects/_site/index.html"
+  five_count="$(recent_section "$home_five" "Recent projects" | grep -c 'class="entry"')"
+  check "five projects render exactly three entries on Home" \
+    test "$five_count" = "3"
+  five_order="$(recent_section "$home_five" "Recent projects" \
+    | grep -o 'Project one\|Project two\|Project three\|Project four\|Project five' \
+    | tr '\n' ' ')"
+  check "Home's three recent projects are the newest three, newest first" \
+    test "$five_order" = "Project five Project four Project three "
+
+  # Zero projects, one post: the Recent projects subsection is gone entirely -
+  # heading string absent from the built page - while Recent posts renders.
+  copy_site_into "$home_dir/posts-only"
+  mkdir -p "$home_dir/posts-only/_posts"
+  cat > "$home_dir/posts-only/_posts/2026-01-02-only-post.html" <<'FIXTURE'
+---
+title: "Only fixture post"
+---
+<p>Fixture content.</p>
+FIXTURE
+  (cd "$home_dir/posts-only" && jekyll build --destination _site --quiet)
+  home_posts_only="$home_dir/posts-only/_site/index.html"
+  check "zero projects removes Home's 'Recent projects' heading entirely" \
+    not grep -q 'Recent projects' "$home_posts_only"
+  check "zero projects leaves no empty-state line on Home" \
+    not grep -q 'No projects yet\.' "$home_posts_only"
+  check "zero projects still renders Home's 'Recent posts'" \
+    grep -q 'Only fixture post' <(recent_section "$home_posts_only" "Recent posts")
+
+  # The mirror image: zero posts, one project.
+  copy_site_into "$home_dir/projects-only"
+  write_project "$home_dir/projects-only" "only-project.html" "Only fixture project" "2026-01-01"
+  (cd "$home_dir/projects-only" && jekyll build --destination _site --quiet)
+  home_projects_only="$home_dir/projects-only/_site/index.html"
+  check "zero posts removes Home's 'Recent posts' heading entirely" \
+    not grep -q 'Recent posts' "$home_projects_only"
+  check "zero posts leaves no empty-state line on Home" \
+    not grep -q 'No posts yet\.' "$home_projects_only"
+  check "zero posts still renders Home's 'Recent projects'" \
+    grep -q 'Only fixture project' <(recent_section "$home_projects_only" "Recent projects")
+
+  # Zero of both: no Recent area at all, and the fixed content above it intact.
+  copy_site_into "$home_dir/empty"
+  (cd "$home_dir/empty" && jekyll build --destination _site --quiet)
+  home_empty="$home_dir/empty/_site/index.html"
+  check "zero projects and zero posts leaves Home with no Recent headings" \
+    not grep -Eq 'Recent projects|Recent posts' "$home_empty"
+  check "zero projects and zero posts leaves Home with no entry list" \
+    not grep -q 'entry-list' "$home_empty"
+  check "Home still renders its heading with no Recent area" \
+    grep -q '<h1>Site Owner</h1>' "$home_empty"
+  check "Home still renders its nav with no Recent area" \
+    grep -q 'href="index.html" aria-current="page"' "$home_empty"
+
+  # Home's generated entry links go through relative_url, so they pick up the
+  # site's base path; a hand-typed "/projects/<slug>/" would not. Building with
+  # a non-empty baseurl is what makes the difference observable: the same
+  # root-absolute grep the source pages get is applied to Home's built output,
+  # allowing only paths the baseurl prefixed.
+  copy_site_into "$home_dir/baseurl"
+  write_project "$home_dir/baseurl" "based-project.html" "Based fixture project" "2026-01-01"
+  mkdir -p "$home_dir/baseurl/_posts"
+  cat > "$home_dir/baseurl/_posts/2026-01-02-based-post.html" <<'FIXTURE'
+---
+title: "Based fixture post"
+---
+<p>Fixture content.</p>
+FIXTURE
+  echo 'baseurl: /base-fixture' >> "$home_dir/baseurl/_config.yml"
+  (cd "$home_dir/baseurl" && jekyll build --destination _site --quiet)
+  home_baseurl="$home_dir/baseurl/_site/index.html"
+  unbased="$(grep -oE '(href|src)="/[^"]*' "$home_baseurl" \
+    | grep -vE '^(href|src)="/base-fixture/' || true)"
+  check "no root-absolute href/src in Home's built output" \
+    test -z "$unbased"
+  check "Home's entry links carry the site's base path" \
+    grep -q 'href="/base-fixture/projects/based-project/"' "$home_baseurl"
+
+  rm -rf "$neg_dir" "$pos_dir" "$list_dir" "$home_dir"
   trap - EXIT
 else
   echo "FAIL: jekyll is available (gem install jekyll failed - check network access / Ruby gem environment)"

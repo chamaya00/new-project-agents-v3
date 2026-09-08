@@ -109,6 +109,20 @@ main {
   font-size: 0.875rem;
 }
 
+/* Recent area on Home: two labelled subsections stacked below the fixed
+   content, same single column and same Entry component as the listing pages,
+   per docs/design/projects-and-posts.md. Only the spacing that separates one
+   subsection from the content above it is new. */
+
+.recent {
+  margin-top: 32px;
+}
+
+.recent__heading {
+  margin: 0 0 8px;
+  font-size: 1.125rem;
+}
+
 @media (min-width: 640px) {
   body {
     padding: 0;

@@ -24,10 +24,12 @@ Jekyll's `relative_url`/`site.baseurl` instead, per ADR 0001.
 - Install: not applicable - no package manager, nothing to install. The gate
   installs its own Jekyll gem on demand (see Test, below); nothing is
   committed for it (no Gemfile).
-- Dev: `python3 -m http.server` still works for the hand-authored pages
-  (`index.html`, `about.html`), but no longer renders collection-driven
-  pages correctly - it skips Jekyll's build entirely. For a real preview,
-  install Ruby and the `jekyll` gem (`gem install jekyll`) and run
+- Dev: `python3 -m http.server` still works for `about.html`, the one page
+  left that is pure hand-authored HTML, but no longer renders
+  collection-driven pages correctly - it skips Jekyll's build entirely. Home
+  joined that set when it gained its Recent area, so `index.html` now needs
+  the build too. For a real preview, install Ruby and the `jekyll` gem
+  (`gem install jekyll`) and run
   `jekyll serve` from the repo root; that runs the same build `tests/check.sh`
   runs, and serves it with live paths.
 - Typecheck / lint / build: not applicable in the compile-step sense - Jekyll
