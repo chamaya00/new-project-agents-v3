@@ -1,0 +1,43 @@
+---
+# Front matter is what makes Jekyll run Liquid over this page; the page needs
+# no values of its own.
+---
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Projects</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <nav class="nav">
+    <a class="nav__brand" href="index.html">Site Owner</a>
+    <ul class="nav__links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="projects.html" aria-current="page">Projects</a></li>
+      <li><a href="posts.html">Posts</a></li>
+      <li><a href="about.html">About</a></li>
+    </ul>
+  </nav>
+
+  <main>
+    <h1>Projects</h1>
+    {%- comment -%}
+    `site.projects` comes out in filename order, so it is sorted here by the
+    `date` each project carries in its front matter. `site.posts` needs no
+    equivalent - Jekyll already hands it back most-recent-first.
+    {%- endcomment -%}
+    {%- assign projects = site.projects | sort: "date" | reverse -%}
+    {%- if projects.size > 0 %}
+    <ul class="entry-list">
+      {%- for project in projects %}
+      {% include entry.html entry=project %}
+      {%- endfor %}
+    </ul>
+    {%- else %}
+    <p class="empty-state">No projects yet.</p>
+    {%- endif %}
+  </main>
+</body>
+</html>

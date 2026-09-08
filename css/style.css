@@ -72,6 +72,43 @@ main {
   color: inherit;
 }
 
+/* Entry list: one column at any width, per docs/design/projects-and-posts.md -
+   the listing pages are the page content area with a list of entries in place
+   of body text, so there is no new layout rule below the breakpoint either. */
+
+.entry-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.entry {
+  padding: 16px 0;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.entry__title {
+  margin: 0;
+  font-size: 1.25rem;
+  /* A long title wraps within the entry rather than truncating or
+     overflowing, same rule the nav band applies to a long owner name. */
+  overflow-wrap: break-word;
+}
+
+.entry__title a {
+  color: inherit;
+}
+
+.entry__date,
+.entry__summary {
+  margin: 4px 0 0;
+}
+
+.entry__date {
+  color: #595959;
+  font-size: 0.875rem;
+}
+
 @media (min-width: 640px) {
   body {
     padding: 0;
