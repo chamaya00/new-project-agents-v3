@@ -1,0 +1,10 @@
+# Minimal Jekyll config. Turns Jekyll processing back on (removes .nojekyll
+# instead) and declares the one collection this repo adds on top of Jekyll's
+# built-in `_posts`. See docs/decisions/0001-enable-jekyll-for-content-listings.md.
+
+collections:
+  projects:
+    output: true
+    permalink: /projects/:path/
+
+# _posts is built-in and already output: true; no declaration needed.

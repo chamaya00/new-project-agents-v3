@@ -7,23 +7,40 @@ and agent runs end to end.
 
 ## Stack
 
-Static HTML5 + CSS3, no JavaScript, no framework, no package manager, no build
-step. Hosted on GitHub Pages as a project site (served at
-`/<repository-name>/`, per `docs/research/pages-subpath.md`). All internal
-links are relative with no leading slash, for the same reason.
+Static HTML5 + CSS3, no JavaScript, no framework, no package manager. Hosted
+on GitHub Pages as a project site (served at `/<repository-name>/`, per
+`docs/research/pages-subpath.md`). Content files are still hand-authored
+HTML5. Jekyll is enabled (`.nojekyll` removed, `_config.yml` added, per
+`docs/decisions/0001-enable-jekyll-for-content-listings.md`) to turn the
+`_posts` and `_projects` collections into generated listing pages - this is
+GitHub Pages' own build machinery running on GitHub's infrastructure on
+every push, not tooling this repo installs or maintains. Hand-authored pages
+outside the collections keep the existing relative-link convention with no
+leading slash; generated collection pages nest at a variable depth and use
+Jekyll's `relative_url`/`site.baseurl` instead, per ADR 0001.
 
 ## Commands
 
-- Install: not applicable - no package manager, nothing to install.
-- Dev: open `index.html` directly in a browser, or serve the root with any
-  static file server (e.g. `python3 -m http.server`) to test relative paths
-  the way GitHub Pages will serve them.
-- Typecheck / lint / build: not applicable - plain static HTML/CSS has no
-  compile step.
+- Install: not applicable - no package manager, nothing to install. The gate
+  installs its own Jekyll gem on demand (see Test, below); nothing is
+  committed for it (no Gemfile).
+- Dev: `python3 -m http.server` still works for the hand-authored pages
+  (`index.html`, `about.html`), but no longer renders collection-driven
+  pages correctly - it skips Jekyll's build entirely. For a real preview,
+  install Ruby and the `jekyll` gem (`gem install jekyll`) and run
+  `jekyll serve` from the repo root; that runs the same build `tests/check.sh`
+  runs, and serves it with live paths.
+- Typecheck / lint / build: not applicable in the compile-step sense - Jekyll
+  is GitHub Pages' own build, invoked from `tests/check.sh` (see Test) rather
+  than a separate step this repo runs on its own.
 - Test: `bash tests/check.sh` - structural checks (file existence, relative
   links, no tracking/form code) for each acceptance criterion that can be
-  scripted. Viewport/visual criteria are checked manually with devtools
-  mobile emulation, per the issue that added the page being checked.
+  scripted, plus the Jekyll build itself: installs the `jekyll` gem if it
+  isn't already on the runner, builds the real site, and builds two throwaway
+  fixtures to prove the collection mechanism (a valid one lands under
+  `_site/projects/<slug>/`, an invalid one fails the build and names the
+  file). Viewport/visual criteria are checked manually with devtools mobile
+  emulation, per the issue that added the page being checked.
 
 There is one check above, `bash tests/check.sh` - typecheck, lint, and build
 don't apply to a static HTML/CSS site with no compile step. That one check is
