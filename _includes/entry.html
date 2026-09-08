@@ -1,0 +1,18 @@
+{%- comment -%}
+Entry: one project or one post, rendered identically wherever it appears, per
+docs/design/projects-and-posts.md. Take it with `entry=` set to a collection
+item: {% include entry.html entry=project %}.
+
+The title is the sole link and points at the entry's generated page, so it
+goes through `relative_url` rather than a hand-typed path - generated pages
+nest at a variable depth, per ADR 0001. The date is rendered readable, never
+as the raw front-matter value or the filename. The summary is optional: when
+it is absent the element is absent too, not an empty placeholder.
+{%- endcomment -%}
+<li class="entry">
+  <h2 class="entry__title"><a href="{{ include.entry.url | relative_url }}">{{ include.entry.title }}</a></h2>
+  <p class="entry__date"><time datetime="{{ include.entry.date | date_to_xmlschema }}">{{ include.entry.date | date: "%-d %B %Y" }}</time></p>
+  {%- if include.entry.summary %}
+  <p class="entry__summary">{{ include.entry.summary }}</p>
+  {%- endif %}
+</li>
