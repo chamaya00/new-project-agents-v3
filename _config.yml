@@ -1,0 +1,17 @@
+# Minimal Jekyll config. Turns Jekyll processing back on (removes .nojekyll
+# instead) and declares the one collection this repo adds on top of Jekyll's
+# built-in `_posts`. See docs/decisions/0001-enable-jekyll-for-content-listings.md.
+
+collections:
+  projects:
+    output: true
+    permalink: /projects/:path/
+
+# _posts is built-in and already output: true; no declaration needed.
+
+# A content file with unparseable front matter must fail the build, not be
+# skipped with a warning. Jekyll's default is to log the YAML error and carry
+# on with exit 0, which would let a broken project or post silently vanish
+# from every listing while the gate stayed green. See tests/check.sh's
+# negative front-matter check, and issue #17's second acceptance criterion.
+strict_front_matter: true

@@ -1,7 +1,7 @@
 # ADR 0001: Enable Jekyll to generate project/post listings from content files
 
 Date: 2026-09-08
-Status: proposed
+Status: accepted
 
 ## Context
 
