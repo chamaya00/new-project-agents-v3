@@ -1,3 +1,7 @@
+---
+# Front matter is what makes Jekyll run Liquid over this page; the page needs
+# no values of its own.
+---
 <!doctype html>
 <html lang="en">
 <head>
@@ -26,6 +30,44 @@
          docs/design/portfolio-shell.md. Replace with the actual set, or
          remove this section entirely if there are none. -->
     <p class="contact-links"><em>Contact links placeholder &mdash; add email / GitHub / LinkedIn / resume links here, or remove this line if none apply.</em></p>
+
+    {%- comment -%}
+    The Recent area, per the Home placement section of
+    docs/design/projects-and-posts.md: up to three projects, then up to three
+    posts, each rendered with the same Entry component the listing pages use.
+
+    A subsection with nothing to list is absent entirely - no heading, no
+    empty container, and deliberately no "none yet" line. That line belongs to
+    the listing pages, which a visitor asked to see; a visitor scanning Home
+    did not ask for this section specifically. With both collections empty,
+    Home ends at its fixed content above and carries no trace of a Recent area.
+
+    `site.projects` comes out in filename order, so it is sorted by the `date`
+    each project carries in its front matter, exactly as projects.html does it.
+    `site.posts` needs no equivalent - Jekyll already hands it back
+    most-recent-first.
+    {%- endcomment -%}
+    {%- assign recent_projects = site.projects | sort: "date" | reverse -%}
+    {%- if recent_projects.size > 0 %}
+    <section class="recent">
+      <h2 class="recent__heading">Recent projects</h2>
+      <ul class="entry-list">
+        {%- for project in recent_projects limit: 3 %}
+        {% include entry.html entry=project %}
+        {%- endfor %}
+      </ul>
+    </section>
+    {%- endif %}
+    {%- if site.posts.size > 0 %}
+    <section class="recent">
+      <h2 class="recent__heading">Recent posts</h2>
+      <ul class="entry-list">
+        {%- for post in site.posts limit: 3 %}
+        {% include entry.html entry=post %}
+        {%- endfor %}
+      </ul>
+    </section>
+    {%- endif %}
   </main>
 </body>
 </html>
