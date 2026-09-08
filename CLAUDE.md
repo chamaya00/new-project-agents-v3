@@ -42,14 +42,13 @@ Jekyll's `relative_url`/`site.baseurl` instead, per ADR 0001.
   file). Viewport/visual criteria are checked manually with devtools mobile
   emulation, per the issue that added the page being checked.
 
-There is one check above, `bash tests/check.sh` - typecheck, lint, and build
-don't apply to a static HTML/CSS site with no compile step. That one check is
-what CI runs once the gate is real. Until then it is not: `.github/workflows/ci.yml`
-ships a placeholder that checks the scaffolding is intact and fails the moment
-product code lands, because a project gets its gate before it gets its stack
-and a gate that goes green on untested code is worse than no gate. Replacing
-it is a step in building this project, not a chore to do later - the comment
-at the top of that file says how.
+There is one check above, `bash tests/check.sh` - typecheck and lint don't
+apply to hand-authored HTML/CSS, and the only build is the Jekyll one that
+script runs itself. That one check is what CI runs:
+`.github/workflows/ci.yml` calls it and nothing else, so adding a check means
+editing the script, never the workflow. It is the real gate - the placeholder
+that used to fail the moment product code landed has done its job and is
+gone.
 
 Whatever the gate runs, the rule is the same. If a check is renamed here,
 rename it in `.github/workflows/ci.yml` in the same commit, and re-point the
