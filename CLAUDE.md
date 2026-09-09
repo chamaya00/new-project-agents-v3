@@ -59,9 +59,32 @@ that thing.
 
 ## How work moves
 
-Objectives become issues labelled `objective`. The orchestrator splits one into
-2-5 child issues, each with acceptance criteria and one role label. A human
-labels a child `agent:queued` when it is ready to run. Nothing runs itself.
+Objectives become issues labelled `objective`. A human labels the objective
+`agent:queued`; nothing else needs labelling by hand. The orchestrator splits it
+into 2-5 child issues, each with acceptance criteria and one role label, and
+queues them itself as each becomes ready.
+
+It stays with the objective after the split. A child reaching `agent:review` or
+`agent:blocked` wakes it: it reads the state of every child, queues whatever the
+merge just unblocked, rewrites and re-queues a child that blocked on its own
+scoping, and replaces the status picture on the parent issue. The parent issue
+is the whole surface - read that, and the orchestrator comes to you when a
+decision is genuinely yours.
+
+Ready means the issues a child depends on are merged to `main`, not merely
+labelled `agent:review`. The researcher and the designer cannot open pull
+requests, so their work can be complete, labelled `agent:review`, and still
+absent from the branch the next agent reads. Checking that is the orchestrator's
+job before it queues anything.
+
+Merging is still yours, and the orchestrator cannot break a child down further -
+that comes back as `needs-decomposition` and a comment on the parent.
+
+**This needs the agent App configured.** Events raised by the default Actions
+token do not start workflow runs, so without `AGENT_APP_ID` and
+`AGENT_APP_PRIVATE_KEY` every label the orchestrator applies raises nothing: the
+objective decomposes and then stops, silently, with correctly labelled children
+that never run. Without the App, queue each child by hand - the older flow.
 
 Labels: `objective`, `agent:queued`, `agent:running`, `agent:review`,
 `agent:blocked`, `needs-decomposition`, `role:researcher`, `role:designer`,
