@@ -181,6 +181,34 @@ if ensure_jekyll; then
   check "no sample post declares a tags key" \
     not grep -rEl '^\s*tags\s*:' _posts/
 
+  # Sample projects (issue #57). Two real _projects files exist in this repo
+  # now, so - like the sample posts above - these checks read the real
+  # build's own _site/, not a throwaway copy. The title match is bracketed by
+  # `>...<` rather than bare, because "linkrot" is both the title and its own
+  # slug - a bare match also hits the href, double-counting the title.
+  real_projects_order="$(grep -o '>linkrot<\|>A pomodoro timer for the terminal<' \
+    _site/projects.html | tr '\n' ' ')"
+  check "the two sample projects render on projects.html, most-recent-first" \
+    test "$real_projects_order" = ">linkrot< >A pomodoro timer for the terminal< "
+
+  home_recent_projects_order="$(recent_section _site/index.html "Recent projects" \
+    | grep -o '>linkrot<\|>A pomodoro timer for the terminal<' | tr '\n' ' ')"
+  check "Home's Recent projects lists the same two, most-recent-first" \
+    test "$home_recent_projects_order" = ">linkrot< >A pomodoro timer for the terminal< "
+
+  check "'linkrot' links to a page that exists in the built output" \
+    test -f _site/projects/linkrot/index.html
+  check "'A pomodoro timer for the terminal' links to a page that exists in the built output" \
+    test -f _site/projects/terminal-pomodoro/index.html
+
+  check "'linkrot' shows its summary on projects.html" \
+    grep -q 'walks a folder of Markdown and reports' _site/projects.html
+  check "'A pomodoro timer for the terminal', which has no summary field, shows no summary line" \
+    no_summary_for _site/projects.html "A pomodoro timer for the terminal"
+
+  check "no sample project declares a tags key" \
+    not grep -rEl '^\s*tags\s*:' _projects/
+
   # Negative fixture: a collection file with invalid front matter must fail
   # the build, and the failure must name the file. Built against a throwaway
   # copy of the repo so it never touches the real working tree.
