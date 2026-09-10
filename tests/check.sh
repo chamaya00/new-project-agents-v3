@@ -360,9 +360,18 @@ FIXTURE
   # site's base path; a hand-typed "/projects/<slug>/" would not. Building with
   # a non-empty baseurl is what makes the difference observable: the same
   # root-absolute grep the source pages get is applied to Home's built output,
-  # allowing only paths the baseurl prefixed.
+  # allowing only paths the baseurl prefixed. The project also carries a tag
+  # (issue #51), so this one grep covers both the entry link and its tag link.
   copy_site_into "$home_dir/baseurl"
-  write_project "$home_dir/baseurl" "based-project.html" "Based fixture project" "2026-01-01"
+  mkdir -p "$home_dir/baseurl/_projects"
+  cat > "$home_dir/baseurl/_projects/based-project.html" <<'FIXTURE'
+---
+title: "Based fixture project"
+date: 2026-01-01
+tags: [based]
+---
+<p>Fixture content.</p>
+FIXTURE
   mkdir -p "$home_dir/baseurl/_posts"
   cat > "$home_dir/baseurl/_posts/2026-01-02-based-post.html" <<'FIXTURE'
 ---
@@ -379,6 +388,8 @@ FIXTURE
     test -z "$unbased"
   check "Home's entry links carry the site's base path" \
     grep -q 'href="/base-fixture/projects/based-project/"' "$home_baseurl"
+  check "Home's entry tag links carry the site's base path" \
+    grep -q 'href="/base-fixture/tags/based/">based</a>' "$home_baseurl"
 
   # Tag pages (issue #50). One fixture site, three assertions against its
   # built _site/ output: a stubbed tag with matching entries from both
@@ -455,6 +466,54 @@ FIXTURE
     unused_page_ok
   check "no _site/tags/ghost/ directory is produced for the unstubbed tag" \
     not test -d "$tag_dir/site/_site/tags/ghost"
+
+  # Entry tags (issue #51): an entry's `tags` front matter renders on
+  # entry.html as one link per tag to that tag's generated page, and is
+  # absent entirely - no heading, no empty container - when there are none.
+  # Reuses $list_dir, still live at this point in the script.
+  copy_site_into "$list_dir/tagged"
+  mkdir -p "$list_dir/tagged/_projects"
+  cat > "$list_dir/tagged/_projects/tagged-project.html" <<'FIXTURE'
+---
+title: "Tagged fixture project"
+date: 2026-01-01
+tags: [design, travel]
+---
+<p>Fixture content.</p>
+FIXTURE
+  (cd "$list_dir/tagged" && jekyll build --destination _site --quiet)
+  tagged_page="$list_dir/tagged/_site/projects.html"
+  check "an entry's 'design' tag links to that tag's generated page" \
+    grep -Eq 'href="[^"]*/tags/design/">design</a>' "$tagged_page"
+  check "an entry's 'travel' tag links to that tag's generated page" \
+    grep -Eq 'href="[^"]*/tags/travel/">travel</a>' "$tagged_page"
+
+  copy_site_into "$list_dir/no-tags-key"
+  mkdir -p "$list_dir/no-tags-key/_projects"
+  cat > "$list_dir/no-tags-key/_projects/no-tags-project.html" <<'FIXTURE'
+---
+title: "No tags fixture project"
+date: 2026-01-01
+---
+<p>Fixture content.</p>
+FIXTURE
+  (cd "$list_dir/no-tags-key" && jekyll build --destination _site --quiet)
+  check "an entry with no tags key renders no tag container" \
+    not grep -q 'entry__tags' "$list_dir/no-tags-key/_site/projects.html"
+
+  copy_site_into "$list_dir/empty-tags-list"
+  mkdir -p "$list_dir/empty-tags-list/_projects"
+  cat > "$list_dir/empty-tags-list/_projects/empty-tags-project.html" <<'FIXTURE'
+---
+title: "Empty tags fixture project"
+date: 2026-01-01
+tags: []
+---
+<p>Fixture content.</p>
+FIXTURE
+  (cd "$list_dir/empty-tags-list" && jekyll build --destination _site --quiet)
+  check "an entry with an empty tags list renders no tag container" \
+    not grep -q 'entry__tags' "$list_dir/empty-tags-list/_site/projects.html"
 
   rm -rf "$neg_dir" "$pos_dir" "$list_dir" "$home_dir" "$tag_dir"
   trap - EXIT
