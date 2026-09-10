@@ -1,0 +1,49 @@
+---
+# Front matter is what makes Jekyll run Liquid over this layout; the layout
+# itself needs no values of its own. Each _tags stub sets `layout: tag` and
+# `tag: <name>`, which is all this layout reads from the page it renders.
+---
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ page.tag }}</title>
+  <link rel="stylesheet" href="{{ '/css/style.css' | relative_url }}">
+</head>
+<body>
+  <nav class="nav">
+    <a class="nav__brand" href="{{ '/index.html' | relative_url }}">Site Owner</a>
+    <ul class="nav__links">
+      <li><a href="{{ '/index.html' | relative_url }}">Home</a></li>
+      <li><a href="{{ '/projects.html' | relative_url }}">Projects</a></li>
+      <li><a href="{{ '/posts.html' | relative_url }}">Posts</a></li>
+      <li><a href="{{ '/about.html' | relative_url }}">About</a></li>
+    </ul>
+  </nav>
+
+  <main>
+    <h1>{{ page.tag }}</h1>
+    {%- comment -%}
+    Cross-collection lookup, per docs/research/tag-pages.md: concat merges
+    both collections into one array before where_exp filters it once for
+    entries whose tags list contains this page's tag, then sort/reverse
+    restores the newest-first ordering concat loses. The same entry.html
+    partial the listing pages use renders each match, so a tagged post and a
+    tagged project appear identically here. A tag with no matching entries -
+    either because none exist yet or because its stub has outlived its last
+    tagged entry - gets an explicit message rather than an empty list.
+    {%- endcomment -%}
+    {%- assign tagged = site.posts | concat: site.projects | where_exp: "entry", "entry.tags contains page.tag" | sort: "date" | reverse -%}
+    {%- if tagged.size > 0 %}
+    <ul class="entry-list">
+      {%- for entry in tagged %}
+      {% include entry.html entry=entry %}
+      {%- endfor %}
+    </ul>
+    {%- else %}
+    <p class="empty-state">No entries tagged "{{ page.tag }}" yet.</p>
+    {%- endif %}
+  </main>
+</body>
+</html>

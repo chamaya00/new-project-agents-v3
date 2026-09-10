@@ -1,7 +1,7 @@
 # ADR 0002: Add a `tags` field and a stub-file-per-tag `_tags` collection
 
 Date: 2026-09-09
-Status: proposed
+Status: accepted
 
 ## Context
 
