@@ -118,11 +118,68 @@ copy_site_into() {
     _config.yml "$dest/"
 }
 
+# Extracts one `<section class="recent">...</section>` block from a built
+# Home page, identified by its heading - so a criterion about what appears
+# *under a given heading* is checked against that block alone, never the
+# whole page.
+recent_section() {
+  awk -v heading="$2" '
+    index($0, ">" heading "<") { inside = 1 }
+    inside { print }
+    inside && /<\/section>/ { exit }
+  ' "$1"
+}
+
+# Extracts one `<li class="entry">...</li>` block from a built listing page,
+# identified by its title - so a criterion about one entry's summary is
+# checked against that entry alone, never the whole page.
+entry_block_for() {
+  awk -v title="$2" '
+    index($0, ">" title "<") { inside = 1 }
+    inside { print }
+    inside && /<\/li>/ { exit }
+  ' "$1"
+}
+
+no_summary_for() {
+  ! entry_block_for "$1" "$2" | grep -q 'entry__summary'
+}
+
 if ensure_jekyll; then
   echo "PASS: jekyll is available ($(jekyll --version))"
 
   check "jekyll build of the real site succeeds" \
     jekyll build --destination _site
+
+  # Sample posts (issue #56). Three real _posts files exist in this repo
+  # now, so - unlike every fixture above - these checks read the real
+  # build's own _site/, not a throwaway copy.
+  real_posts_order="$(grep -o 'Writing HTML by hand again\|A week with Jekyll\|Static by choice' \
+    _site/posts.html | tr '\n' ' ')"
+  check "the three sample posts render on posts.html, most-recent-first" \
+    test "$real_posts_order" = "Writing HTML by hand again A week with Jekyll Static by choice "
+
+  home_recent_posts_order="$(recent_section _site/index.html "Recent posts" \
+    | grep -o 'Writing HTML by hand again\|A week with Jekyll\|Static by choice' | tr '\n' ' ')"
+  check "Home's Recent posts lists the same three, most-recent-first" \
+    test "$home_recent_posts_order" = "Writing HTML by hand again A week with Jekyll Static by choice "
+
+  check "'Writing HTML by hand again' links to a page that exists in the built output" \
+    test -f _site/2026/08/20/writing-html-by-hand-again.html
+  check "'A week with Jekyll' links to a page that exists in the built output" \
+    test -f _site/2026/07/15/a-week-with-jekyll.html
+  check "'Static by choice' links to a page that exists in the built output" \
+    test -f _site/2026/06/01/static-by-choice.html
+
+  check "'Writing HTML by hand again' shows its summary on posts.html" \
+    grep -q 'closing my own tags feels like relearning' _site/posts.html
+  check "'Static by choice' shows its summary on posts.html" \
+    grep -q 'the constraints are the design' _site/posts.html
+  check "'A week with Jekyll', which has no summary field, shows no summary line" \
+    no_summary_for _site/posts.html "A week with Jekyll"
+
+  check "no sample post declares a tags key" \
+    not grep -rEl '^\s*tags\s*:' _posts/
 
   # Negative fixture: a collection file with invalid front matter must fail
   # the build, and the failure must name the file. Built against a throwaway
@@ -253,14 +310,6 @@ FIXTURE
   # would otherwise pass a check about the wrong subsection.
   home_dir="$(mktemp -d)"
   trap 'rm -rf "$neg_dir" "$pos_dir" "$list_dir" "$home_dir"' EXIT
-
-  recent_section() {
-    awk -v heading="$2" '
-      index($0, ">" heading "<") { inside = 1 }
-      inside { print }
-      inside && /<\/section>/ { exit }
-    ' "$1"
-  }
 
   # Writes one _projects fixture file: dir, filename, title, date.
   write_project() {
