@@ -3,7 +3,7 @@ name: guard
 # Thin caller. Keeps repo memory inside its cap and keeps agents out of the
 # files that gate the repo.
 #
-# Pinned to a release, like the other callers. See ci.yml for why.
+# Pinned to a release by commit SHA, like the other callers. See ci.yml for why.
 
 on:
   push:
@@ -12,4 +12,4 @@ on:
 
 jobs:
   guard:
-    uses: chamaya00/agent-factory/.github/workflows/project-guard.yml@v1.18.0
+    uses: chamaya00/agent-factory/.github/workflows/project-guard.yml@13948257a2f59f0ac00bac54a7d345efc1edd817 # v1.18.0

@@ -4,3 +4,27 @@
 /.github/workflows/  @chamaya00
 /.github/CODEOWNERS  @chamaya00
 /CLAUDE.md           @chamaya00
+
+# Everything below was added by the security review in
+# `docs/security/2026-09-10-public-repo-audit.md`. Each entry is a path an
+# agent run can already write to, and whose contents steer a later run or get
+# executed by one - the two ways a merged diff outlives the run that wrote it.
+
+# The engineer's Bash allowlist grants `bash tests/*`, `./tests/*`,
+# `bash scripts/*` and `./scripts/*`, and it holds `Write` and `Edit` as well.
+# A run that can author the script it is allowed to execute has an unscoped
+# shell, whatever the allowlist says. Review is what keeps that shell from
+# reaching `main`.
+/tests/              @chamaya00
+/scripts/            @chamaya00
+
+# Read at the start of every run by every role, and never re-read critically -
+# lessons are meant to be trusted. The project guard checks only that these
+# files are inside their 40-line cap; nothing checks what the lines say. A
+# single merged edit here steers every future run on this repository.
+/.claude/memory/     @chamaya00
+
+# The role prompts, the skills, and the slash commands. The project guard
+# already refuses these from a non-maintainer; this makes the same rule hold
+# at review time rather than only in CI.
+/.claude/            @chamaya00

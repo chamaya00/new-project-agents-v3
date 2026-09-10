@@ -522,4 +522,33 @@ else
   fail=1
 fi
 
+# --- Supply chain: reusable workflows are pinned by commit SHA --------------
+# Added by the security review in docs/security/2026-09-10-public-repo-audit.md.
+#
+# Every workflow here is a thin caller into chamaya00/agent-factory, and
+# agent-run.yml hands that workflow CLAUDE_CODE_OAUTH_TOKEN and the App
+# private key. A `@v1.18.0` ref names a tag, and a tag is a movable pointer:
+# repointing it changes what runs here, with those secrets, and no diff lands
+# in this repository for anyone to review. A 40-hex SHA cannot be repointed.
+#
+# This check is what keeps the pin from drifting back to a tag. Both halves
+# matter: the SHA is what actually runs, and the trailing `# vX.Y.Z` comment
+# is the only way a reader tells which release that hash is without resolving
+# it by hand, so `/update-agents` has to rewrite the two together.
+
+unpinned="$(grep -rhoE 'uses:[[:space:]]*chamaya00/agent-factory/[^[:space:]]+' \
+  .github/workflows/ | grep -vE '@[0-9a-f]{40}$' || true)"
+if [ -z "$unpinned" ]; then
+  echo "PASS: every agent-factory workflow reference is pinned to a commit SHA"
+else
+  echo "FAIL: every agent-factory workflow reference is pinned to a commit SHA"
+  printf '%s\n' "$unpinned" | sed 's/^/  unpinned: /'
+  fail=1
+fi
+
+pinned_with_tag="$(grep -rhcE '@[0-9a-f]{40} # v[0-9]+\.[0-9]+\.[0-9]+$' \
+  .github/workflows/*.yml | paste -sd+ - | bc)"
+check "all four pinned references name their release in a trailing comment" \
+  test "$pinned_with_tag" -eq 4
+
 exit $fail

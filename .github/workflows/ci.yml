@@ -7,6 +7,15 @@ name: ci
 # nothing here on its own. `/update-agents` proposes the bump as a pull
 # request, so the diff gets read here before it runs here.
 #
+# The ref is a commit SHA, not the `v1.18.0` tag it used to be, with the tag
+# kept alongside it as a comment so a reader can still see which release this
+# is. A tag is a movable pointer: anyone able to push a tag in the factory can
+# change what runs here, and this caller hands that workflow the OAuth token
+# and the App private key. A SHA cannot be repointed. `/update-agents` bumps
+# both halves together - the SHA is what runs, the comment is what it is
+# called - and `tests/check.sh` fails the build if any caller drifts back to a
+# tag.
+#
 # ---------------------------------------------------------------------------
 # This is the real gate. It replaced the provisioning placeholder in the same
 # sitting that the stack landed, which is what the placeholder's own comment
@@ -46,7 +55,7 @@ on:
 
 jobs:
   ci:
-    uses: chamaya00/agent-factory/.github/workflows/ci.yml@v1.18.0
+    uses: chamaya00/agent-factory/.github/workflows/ci.yml@13948257a2f59f0ac00bac54a7d345efc1edd817 # v1.18.0
     with:
       check-name: 'static-site'
       commands: |
