@@ -91,6 +91,13 @@ done
 # file has the right shape. `jekyll build` fails loudly (non-zero exit) on
 # a YAML front-matter error, which is what the negative check below relies
 # on.
+#
+# Two builds run below, deliberately, and the difference between them is the
+# whole point. The fixture builds use the plain `jekyll` gem: they are about
+# this repository's own Liquid, they run a dozen times, and speed matters.
+# The last check in this file builds the real site with the `github-pages`
+# gem instead - the toolchain Pages actually runs - because a plain `jekyll`
+# build is not what ships and cannot see what breaks there. See ADR 0003.
 
 ensure_jekyll() {
   if command -v jekyll >/dev/null 2>&1; then
@@ -105,6 +112,33 @@ ensure_jekyll() {
   echo "jekyll not found - installing (gem install jekyll --user-install)..."
   gem install jekyll --user-install --no-document >/dev/null 2>&1
   command -v jekyll >/dev/null 2>&1
+}
+
+# The `github-pages` gem, which is what GitHub Pages itself runs. Separate
+# from ensure_jekyll because it is a different build with a different plugin
+# set, not a newer version of the same one.
+ensure_github_pages() {
+  if command -v github-pages >/dev/null 2>&1; then
+    return 0
+  fi
+  local user_gem_bin
+  user_gem_bin="$(ruby -e 'print Gem.user_dir')/bin"
+  export PATH="$user_gem_bin:$PATH"
+  command -v github-pages >/dev/null 2>&1 && return 0
+  echo "github-pages not found - installing (gem install github-pages)..."
+  gem install github-pages --user-install --no-document >/dev/null 2>&1
+  command -v github-pages >/dev/null 2>&1
+}
+
+# Builds the real site the way Pages builds it, and reports the exit code.
+# Two environment values the hosted build gets for free and a local or CI
+# run does not: a UTF-8 locale (the gem dies on a non-ASCII byte without
+# one, and this repository's prose has them) and the repository name, which
+# jekyll-github-metadata requires and cannot infer here.
+build_like_pages() {
+  LANG=C.UTF-8 LC_ALL=C.UTF-8 \
+  PAGES_REPO_NWO="${GITHUB_REPOSITORY:-chamaya00/new-project-agents-v3}" \
+    github-pages build --destination "$1" >"$2" 2>&1
 }
 
 # Copies the site's own files into a throwaway directory, so a fixture build
@@ -596,6 +630,62 @@ FIXTURE
   trap - EXIT
 else
   echo "FAIL: jekyll is available (gem install jekyll failed - check network access / Ruby gem environment)"
+  fail=1
+fi
+
+# --- The build that actually ships -----------------------------------------
+# Everything above builds with the plain `jekyll` gem. Pages does not: it runs
+# `github-pages`, which loads jekyll-optional-front-matter, and that turns
+# every .md in the repository into a page and renders it through Liquid.
+#
+# That gap is not theoretical. docs/research/tag-pages.md quotes Liquid in its
+# code samples, including an `{% if %}` excerpt with no `{% endif %}`. Pages
+# executed it, the deployment failed, and it kept failing for eight merges
+# while every check here stayed green - because a plain `jekyll` build copies
+# that file through untouched and never parses it. The site served a
+# nineteen-hour-old build the whole time and nothing said so.
+#
+# So the real site gets built once, here, by the toolchain that publishes it.
+# See ADR 0003.
+
+if ensure_github_pages; then
+  pages_dir="$(mktemp -d)"
+  pages_log="$(mktemp)"
+  trap 'rm -rf "$pages_dir" "$pages_log"' EXIT
+
+  if build_like_pages "$pages_dir" "$pages_log"; then
+    echo "PASS: the real site builds with the github-pages gem, as Pages builds it"
+  else
+    echo "FAIL: the real site builds with the github-pages gem, as Pages builds it"
+    echo "      This is the build that publishes the site. Green checks above do"
+    echo "      not cover it - a plain jekyll build has a different plugin set."
+    sed -n 's/^ *\(Liquid Exception\|Error\|ERROR\):/&/p' "$pages_log" | head -5
+    tail -5 "$pages_log"
+    fail=1
+  fi
+
+  # Repository documentation is not site content. It was published anyway,
+  # under a theme nobody chose, until _config.yml excluded it - and it is the
+  # same leak that let a research note take the build down. A page here means
+  # the exclude list has stopped covering something.
+  for leaked in docs tests CLAUDE.md README.md; do
+    check "the published site carries no $leaked" not test -e "$pages_dir/$leaked"
+  done
+  check "no repository markdown reaches the published site" \
+    test -z "$(find "$pages_dir" -name '*.md' 2>/dev/null)"
+
+  # The content is the point of all of it: what a visitor actually gets.
+  check "the published site lists all three posts" \
+    test "$(grep -c 'entry__title' "$pages_dir/posts.html")" -eq 3
+  check "the published site lists both projects" \
+    test "$(grep -c 'entry__title' "$pages_dir/projects.html")" -eq 2
+  check "the published Home carries both Recent subsections" \
+    test "$(grep -c 'recent__heading' "$pages_dir/index.html")" -eq 2
+
+  rm -rf "$pages_dir" "$pages_log"
+  trap - EXIT
+else
+  echo "FAIL: the github-pages gem is available (gem install github-pages failed - check network access / Ruby gem environment)"
   fail=1
 fi
 
