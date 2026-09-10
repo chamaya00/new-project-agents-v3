@@ -36,10 +36,10 @@ on:
 
 jobs:
   agent:
-    uses: chamaya00/agent-factory/.github/workflows/agent-run.yml@v1.16.0
+    uses: chamaya00/agent-factory/.github/workflows/agent-run.yml@v1.18.0
     with:
       issue-number: ${{ inputs.issue-number || '' }}
-      max-turns: 40
+      max-turns: 80
       timeout-minutes: 30
     secrets:
       claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
