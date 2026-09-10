@@ -91,6 +91,12 @@ done
 # file has the right shape. `jekyll build` fails loudly (non-zero exit) on
 # a YAML front-matter error, which is what the negative check below relies
 # on.
+#
+# Everything here builds with the plain `jekyll` gem. GitHub Pages does not:
+# it runs `github-pages`, a different gem with a dozen extra plugins. So a
+# green run below is evidence about this repository's own Liquid, not proof
+# that the site will deploy. ADR 0003 records how that gap took the site
+# down for nineteen hours, what closes it, and what is still open.
 
 ensure_jekyll() {
   if command -v jekyll >/dev/null 2>&1; then
@@ -106,6 +112,7 @@ ensure_jekyll() {
   gem install jekyll --user-install --no-document >/dev/null 2>&1
   command -v jekyll >/dev/null 2>&1
 }
+
 
 # Copies the site's own files into a throwaway directory, so a fixture build
 # starts from the real pages, stylesheet, config, and includes but none of the
@@ -208,6 +215,24 @@ if ensure_jekyll; then
 
   check "no sample project declares a tags key" \
     not grep -rEl '^\s*tags\s*:' _projects/
+
+  # Repository documentation is not site content, and until ADR 0003 it was
+  # being published anyway - CLAUDE.md, every ADR, every research note, live
+  # at /docs/... under a theme nobody chose. That leak is also what took the
+  # site down: GitHub Pages renders every .md it can see through Liquid, and
+  # docs/research/tag-pages.md quotes an `{% if %}` with no `{% endif %}` in
+  # its code samples. Pages executed it and eight deployments failed.
+  #
+  # This build cannot see that error - the plain jekyll gem has no such
+  # plugin and copies the file through unparsed, which is exactly why nothing
+  # here went red. What it can see, and now asserts, is the precondition: no
+  # documentation reaches the built site at all. Shortening the exclude list
+  # fails here rather than quietly republishing the docs.
+  for leaked in docs tests CLAUDE.md README.md; do
+    check "the built site carries no $leaked" not test -e "_site/$leaked"
+  done
+  check "no repository markdown reaches the built site" \
+    test -z "$(find _site -name '*.md' 2>/dev/null)"
 
   # Negative fixture: a collection file with invalid front matter must fail
   # the build, and the failure must name the file. Built against a throwaway

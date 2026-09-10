@@ -22,3 +22,28 @@ collections:
 # from every listing while the gate stayed green. See tests/check.sh's
 # negative front-matter check, and issue #17's second acceptance criterion.
 strict_front_matter: true
+
+# What Jekyll must not treat as site content.
+#
+# This repository holds its own documentation - ADRs, research, design notes -
+# alongside the site it publishes. GitHub Pages does not build the way a plain
+# `jekyll build` does: it runs the `github-pages` gem, which loads
+# jekyll-optional-front-matter, and that turns every .md in the repository into
+# a page and renders it through Liquid.
+#
+# That is how the site broke. docs/research/tag-pages.md quotes Liquid in its
+# code samples, including an excerpt with an `{% if %}` and no `{% endif %}` -
+# correct as an illustration, fatal when executed. Pages parsed it as a
+# template and every deployment failed from that merge onward, while the local
+# build, which has no such plugin, copied the file through untouched and stayed
+# green. Eight merges deployed nothing.
+#
+# Excluding these is the fix and also what we wanted anyway: repository
+# documentation is not site content, and it was being published at
+# /docs/decisions/... under a default theme nobody chose. Prose is free to
+# quote Liquid again because nothing renders it.
+exclude:
+  - docs
+  - tests
+  - CLAUDE.md
+  - README.md
