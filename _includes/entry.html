@@ -7,12 +7,23 @@ The title is the sole link and points at the entry's generated page, so it
 goes through `relative_url` rather than a hand-typed path - generated pages
 nest at a variable depth, per ADR 0001. The date is rendered readable, never
 as the raw front-matter value or the filename. The summary is optional: when
-it is absent the element is absent too, not an empty placeholder.
+it is absent the element is absent too, not an empty placeholder. Tags are
+optional the same way; each one links to its tag's generated page (#50)
+through `relative_url` for the same reason, built from the tag string
+verbatim - matched against the tag's stub filename, no slugification, per
+docs/research/tag-pages.md's front matter section.
 {%- endcomment -%}
 <li class="entry">
   <h2 class="entry__title"><a href="{{ include.entry.url | relative_url }}">{{ include.entry.title }}</a></h2>
   <p class="entry__date"><time datetime="{{ include.entry.date | date_to_xmlschema }}">{{ include.entry.date | date: "%-d %B %Y" }}</time></p>
   {%- if include.entry.summary %}
   <p class="entry__summary">{{ include.entry.summary }}</p>
+  {%- endif %}
+  {%- if include.entry.tags.size > 0 %}
+  <ul class="entry__tags">
+    {%- for tag in include.entry.tags %}
+    <li class="entry__tag"><a href="{{ '/tags/' | append: tag | append: '/' | relative_url }}">{{ tag }}</a></li>
+    {%- endfor %}
+  </ul>
   {%- endif %}
 </li>
