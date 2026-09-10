@@ -42,6 +42,15 @@ check "_config.yml declares a projects collection" \
   grep -Eq '^\s*projects:\s*$' _config.yml
 check "_config.yml's projects collection sets output: true" \
   grep -Eq '^\s*output:\s*true\s*$' _config.yml
+check "_config.yml declares a tags collection" \
+  grep -Eq '^\s*tags:\s*$' _config.yml
+check "_config.yml's tags collection sets a /tags/:path/ permalink" \
+  grep -Eq '^\s*permalink:\s*/tags/:path/\s*$' _config.yml
+check "_config.yml documents deleting a tag's stub with its last entry" \
+  grep -q "same commit that removes its last tagged entry" _config.yml
+check "ADR 0002 status is accepted" \
+  grep -Eq '^Status:\s*accepted\s*$' \
+    docs/decisions/0002-add-tags-and-a-tag-page-per-collection.md
 
 check "projects.html exists at repo root" test -f projects.html
 check "posts.html exists at repo root" test -f posts.html
@@ -105,7 +114,8 @@ ensure_jekyll() {
 copy_site_into() {
   local dest="$1"
   mkdir -p "$dest"
-  cp -r index.html about.html projects.html posts.html css _includes _config.yml "$dest/"
+  cp -r index.html about.html projects.html posts.html css _includes _layouts \
+    _config.yml "$dest/"
 }
 
 if ensure_jekyll; then
@@ -370,7 +380,83 @@ FIXTURE
   check "Home's entry links carry the site's base path" \
     grep -q 'href="/base-fixture/projects/based-project/"' "$home_baseurl"
 
-  rm -rf "$neg_dir" "$pos_dir" "$list_dir" "$home_dir"
+  # Tag pages (issue #50). One fixture site, three assertions against its
+  # built _site/ output: a stubbed tag with matching entries from both
+  # collections, out of date order; a stubbed tag with no matching entries at
+  # all; and a tag used by an entry but never given a stub file.
+  tag_dir="$(mktemp -d)"
+  trap 'rm -rf "$neg_dir" "$pos_dir" "$list_dir" "$home_dir" "$tag_dir"' EXIT
+
+  copy_site_into "$tag_dir/site"
+  mkdir -p "$tag_dir/site/_tags" "$tag_dir/site/_posts" "$tag_dir/site/_projects"
+
+  cat > "$tag_dir/site/_tags/design.html" <<'FIXTURE'
+---
+layout: tag
+tag: design
+---
+FIXTURE
+
+  cat > "$tag_dir/site/_tags/unused.html" <<'FIXTURE'
+---
+layout: tag
+tag: unused
+---
+FIXTURE
+
+  # Older by date, but the _posts filename sorts alphabetically after the
+  # _projects file - out of date order on purpose, per the criterion.
+  cat > "$tag_dir/site/_posts/2026-01-01-older-tagged-post.html" <<'FIXTURE'
+---
+title: "Older tagged post"
+tags: [design]
+---
+<p>Fixture content.</p>
+FIXTURE
+
+  cat > "$tag_dir/site/_projects/newer-tagged-project.html" <<'FIXTURE'
+---
+title: "Newer tagged project"
+date: 2026-06-01
+tags: [design]
+---
+<p>Fixture content.</p>
+FIXTURE
+
+  # Carries a tag ("ghost") with no _tags/ghost.html stub at all.
+  cat > "$tag_dir/site/_projects/ghost-tagged-project.html" <<'FIXTURE'
+---
+title: "Ghost tagged project"
+date: 2026-03-01
+tags: [ghost]
+---
+<p>Fixture content.</p>
+FIXTURE
+
+  (cd "$tag_dir/site" && jekyll build --destination _site --quiet)
+
+  design_page="$tag_dir/site/_site/tags/design/index.html"
+  unused_page="$tag_dir/site/_site/tags/unused/index.html"
+
+  design_page_ok() {
+    local order
+    order="$(grep -o 'Newer tagged project\|Older tagged post' "$design_page" | tr '\n' ' ')"
+    test -f "$design_page" \
+      && grep -q 'class="entry"' "$design_page" \
+      && test "$order" = "Newer tagged project Older tagged post "
+  }
+  unused_page_ok() {
+    test -f "$unused_page" && grep -q 'No entries tagged' "$unused_page"
+  }
+
+  check "design tag page lists both matching entries newest-first via entry.html" \
+    design_page_ok
+  check "unused tag page still builds and shows a no-entries message" \
+    unused_page_ok
+  check "no _site/tags/ghost/ directory is produced for the unstubbed tag" \
+    not test -d "$tag_dir/site/_site/tags/ghost"
+
+  rm -rf "$neg_dir" "$pos_dir" "$list_dir" "$home_dir" "$tag_dir"
   trap - EXIT
 else
   echo "FAIL: jekyll is available (gem install jekyll failed - check network access / Ruby gem environment)"
