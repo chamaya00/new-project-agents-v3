@@ -1,0 +1,46 @@
+{%- comment -%}
+Tag page: every entry across site.posts and site.projects whose `tags` list
+contains this stub's `tag`, newest first, rendered through the same
+entry.html partial the listing pages use. `concat` merges both collections
+before `where_exp` filters once across both; `sort: "date" | reverse` is
+needed because concatenation loses site.posts' free most-recent-first order.
+See docs/research/tag-pages.md and ADR 0002.
+
+This is a generated collection page (per ADR 0001, one that nests at a
+variable depth), so its own links go through relative_url rather than the
+hand-typed relative paths the root-level pages use.
+{%- endcomment -%}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ page.tag }}</title>
+  <link rel="stylesheet" href="{{ '/css/style.css' | relative_url }}">
+</head>
+<body>
+  <nav class="nav">
+    <a class="nav__brand" href="{{ '/' | relative_url }}">Site Owner</a>
+    <ul class="nav__links">
+      <li><a href="{{ '/' | relative_url }}">Home</a></li>
+      <li><a href="{{ '/projects.html' | relative_url }}">Projects</a></li>
+      <li><a href="{{ '/posts.html' | relative_url }}">Posts</a></li>
+      <li><a href="{{ '/about.html' | relative_url }}">About</a></li>
+    </ul>
+  </nav>
+
+  <main>
+    <h1>{{ page.tag }}</h1>
+    {%- assign tagged = site.posts | concat: site.projects | where_exp: "entry", "entry.tags contains page.tag" | sort: "date" | reverse -%}
+    {%- if tagged.size > 0 %}
+    <ul class="entry-list">
+      {%- for entry in tagged %}
+      {% include entry.html entry=entry %}
+      {%- endfor %}
+    </ul>
+    {%- else %}
+    <p class="empty-state">No entries tagged &quot;{{ page.tag }}&quot; yet.</p>
+    {%- endif %}
+  </main>
+</body>
+</html>

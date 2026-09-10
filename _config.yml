@@ -6,6 +6,12 @@ collections:
   projects:
     output: true
     permalink: /projects/:path/
+  # One stub file per tag in use across _posts and _projects; see
+  # docs/research/tag-pages.md and ADR 0002. The build cannot tell a tag has
+  # fallen out of use, so: delete a tag's stub file in the same commit that removes its last tagged entry, or its page keeps building empty forever.
+  tags:
+    output: true
+    permalink: /tags/:path/
 
 # _posts is built-in and already output: true; no declaration needed.
 

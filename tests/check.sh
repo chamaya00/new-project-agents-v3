@@ -42,6 +42,14 @@ check "_config.yml declares a projects collection" \
   grep -Eq '^\s*projects:\s*$' _config.yml
 check "_config.yml's projects collection sets output: true" \
   grep -Eq '^\s*output:\s*true\s*$' _config.yml
+check "_config.yml declares a tags collection" \
+  grep -Eq '^\s*tags:\s*$' _config.yml
+check "_config.yml's tags collection uses a /tags/:path/-style permalink" \
+  grep -Eq '^\s*permalink:\s*/tags/:path/\s*$' _config.yml
+check "_config.yml documents the tag-stub drift rule" \
+  grep -q "delete a tag's stub file in the same commit that removes its last tagged entry" _config.yml
+check "ADR 0002 status is accepted" \
+  grep -Eq '^Status:\s*accepted\s*$' docs/decisions/0002-add-tags-and-a-tag-page-per-collection.md
 
 check "projects.html exists at repo root" test -f projects.html
 check "posts.html exists at repo root" test -f posts.html
@@ -105,7 +113,7 @@ ensure_jekyll() {
 copy_site_into() {
   local dest="$1"
   mkdir -p "$dest"
-  cp -r index.html about.html projects.html posts.html css _includes _config.yml "$dest/"
+  cp -r index.html about.html projects.html posts.html css _includes _layouts _config.yml "$dest/"
 }
 
 if ensure_jekyll; then
@@ -370,7 +378,78 @@ FIXTURE
   check "Home's entry links carry the site's base path" \
     grep -q 'href="/base-fixture/projects/based-project/"' "$home_baseurl"
 
-  rm -rf "$neg_dir" "$pos_dir" "$list_dir" "$home_dir"
+  # Tag pages (issue #46). One fixture build, three assertions against its
+  # _site/ output: a stub with matching entries from both collections lists
+  # them newest first through entry.html; a stub with no matching entries
+  # ("unused") still builds and shows the empty-state message rather than an
+  # empty or broken list; and a tag used on an entry but never given a stub
+  # ("unstubbed-tag") produces no page at all.
+  tags_dir="$(mktemp -d)"
+  trap 'rm -rf "$neg_dir" "$pos_dir" "$list_dir" "$home_dir" "$tags_dir"' EXIT
+
+  copy_site_into "$tags_dir/site"
+  mkdir -p "$tags_dir/site/_tags" "$tags_dir/site/_projects" "$tags_dir/site/_posts"
+
+  cat > "$tags_dir/site/_tags/photography.html" <<'FIXTURE'
+---
+layout: tag
+tag: photography
+---
+FIXTURE
+
+  cat > "$tags_dir/site/_tags/unused.html" <<'FIXTURE'
+---
+layout: tag
+tag: unused
+---
+FIXTURE
+
+  cat > "$tags_dir/site/_projects/older-project.html" <<'FIXTURE'
+---
+title: "Older tagged project"
+date: 2026-01-01
+tags: [photography]
+---
+<p>Fixture content.</p>
+FIXTURE
+
+  cat > "$tags_dir/site/_projects/newest-project.html" <<'FIXTURE'
+---
+title: "Newest tagged project"
+date: 2026-05-01
+tags: [photography, unstubbed-tag]
+---
+<p>Fixture content.</p>
+FIXTURE
+
+  cat > "$tags_dir/site/_posts/2026-03-01-middle-post.html" <<'FIXTURE'
+---
+title: "Middle tagged post"
+tags: [photography]
+---
+<p>Fixture content.</p>
+FIXTURE
+
+  (cd "$tags_dir/site" && jekyll build --destination _site --quiet)
+  tag_page="$tags_dir/site/_site/tags/photography/index.html"
+  tag_order="$(grep -o 'Newest tagged project\|Middle tagged post\|Older tagged project' "$tag_page" | tr '\n' ' ')"
+  check "a tag page lists matching entries from both collections, newest first" \
+    test "$tag_order" = "Newest tagged project Middle tagged post Older tagged project "
+  check "a tag page renders matches through the entry.html partial" \
+    grep -q 'class="entry"' "$tag_page"
+
+  other_tag_page="$tags_dir/site/_site/tags/unused/index.html"
+  check "a stub with no matching entries still builds successfully" \
+    test -f "$other_tag_page"
+  check "a stub with no matching entries shows the 'no entries tagged' message" \
+    grep -q 'No entries tagged' "$other_tag_page"
+  check "a stub with no matching entries renders no entry list" \
+    not grep -q 'entry-list' "$other_tag_page"
+
+  check "no page is produced for a tag used on an entry but never stubbed" \
+    not test -d "$tags_dir/site/_site/tags/unstubbed-tag"
+
+  rm -rf "$neg_dir" "$pos_dir" "$list_dir" "$home_dir" "$tags_dir"
   trap - EXIT
 else
   echo "FAIL: jekyll is available (gem install jekyll failed - check network access / Ruby gem environment)"
