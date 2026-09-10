@@ -42,6 +42,14 @@ check "_config.yml declares a projects collection" \
   grep -Eq '^\s*projects:\s*$' _config.yml
 check "_config.yml's projects collection sets output: true" \
   grep -Eq '^\s*output:\s*true\s*$' _config.yml
+check "_config.yml declares a _tags collection" \
+  grep -Eq '^\s*tags:\s*$' _config.yml
+check "_config.yml's tags collection uses a /tags/:path/-style permalink" \
+  grep -Eq '^\s*permalink:\s*/tags/:path/\s*$' _config.yml
+check "_config.yml documents deleting a tag's stub in the same commit as its last tagged entry" \
+  grep -q "delete a tag's stub file in the same commit that removes its last tagged entry" _config.yml
+check "ADR 0002 status is accepted" \
+  grep -Eq '^Status:\s*accepted\s*$' docs/decisions/0002-add-tags-and-a-tag-page-per-collection.md
 
 check "projects.html exists at repo root" test -f projects.html
 check "posts.html exists at repo root" test -f posts.html
@@ -105,7 +113,7 @@ ensure_jekyll() {
 copy_site_into() {
   local dest="$1"
   mkdir -p "$dest"
-  cp -r index.html about.html projects.html posts.html css _includes _config.yml "$dest/"
+  cp -r index.html about.html projects.html posts.html css _includes _layouts _config.yml "$dest/"
 }
 
 if ensure_jekyll; then
@@ -370,7 +378,94 @@ FIXTURE
   check "Home's entry links carry the site's base path" \
     grep -q 'href="/base-fixture/projects/based-project/"' "$home_baseurl"
 
-  rm -rf "$neg_dir" "$pos_dir" "$list_dir" "$home_dir"
+  # Tag pages (issue #46). A _tags/<slug>.html stub carries `layout: tag` and
+  # `tag: <name>`; the tag layout lists every entry from both collections
+  # whose `tags` list contains that name, through the same entry.html
+  # partial the listing pages use.
+  tag_dir="$(mktemp -d)"
+  trap 'rm -rf "$neg_dir" "$pos_dir" "$list_dir" "$home_dir" "$tag_dir"' EXIT
+
+  # Writes one _projects fixture file: dir, filename, title, date, tags.
+  write_tagged_project() {
+    mkdir -p "$1/_projects"
+    local yaml_tags=""
+    for t in $5; do yaml_tags="$yaml_tags, $t"; done
+    cat > "$1/_projects/$2" <<FIXTURE
+---
+title: "$3"
+date: $4
+tags: [${yaml_tags#, }]
+---
+<p>Fixture content.</p>
+FIXTURE
+  }
+
+  # A stub file for the "photography" tag, plus a tagged post and a tagged
+  # project out of date order, plus an unrelated entry tagged something else
+  # entirely - proving the page lists only its own tag's entries, newest
+  # first, through entry.html.
+  copy_site_into "$tag_dir/matching"
+  mkdir -p "$tag_dir/matching/_tags"
+  cat > "$tag_dir/matching/_tags/photography.html" <<'FIXTURE'
+---
+layout: tag
+tag: photography
+---
+FIXTURE
+  write_tagged_project "$tag_dir/matching" "older.html" "Older photography project" "2026-01-01" "photography"
+  mkdir -p "$tag_dir/matching/_posts"
+  cat > "$tag_dir/matching/_posts/2026-06-01-newer-post.html" <<'FIXTURE'
+---
+title: "Newer photography post"
+tags: [photography]
+---
+<p>Fixture content.</p>
+FIXTURE
+  write_tagged_project "$tag_dir/matching" "unrelated.html" "Unrelated fixture project" "2026-03-01" "travel"
+  (cd "$tag_dir/matching" && jekyll build --destination _site --quiet)
+  tag_page="$tag_dir/matching/_site/tags/photography/index.html"
+  check "a _tags stub builds to _site/tags/<slug>/" \
+    test -f "$tag_page"
+  check "the tag page lists the tagged post" \
+    grep -q 'Newer photography post' "$tag_page"
+  check "the tag page lists the tagged project" \
+    grep -q 'Older photography project' "$tag_page"
+  check "the tag page excludes an entry tagged something else" \
+    not grep -q 'Unrelated fixture project' "$tag_page"
+  tag_order="$(grep -o 'Newer photography post\|Older photography project' "$tag_page" | tr '\n' ' ')"
+  check "the tag page lists matches newest first across both collections" \
+    test "$tag_order" = "Newer photography post Older photography project "
+  check "the tag page renders matches through the entry.html partial" \
+    grep -q 'class="entry"' "$tag_page"
+
+  # An entry carries a tag with no corresponding _tags/ stub file: no page at
+  # all is produced for it, not an empty or broken one.
+  copy_site_into "$tag_dir/no-stub"
+  write_tagged_project "$tag_dir/no-stub" "unstubbed.html" "Unstubbed fixture project" "2026-01-01" "unstubbed-tag"
+  (cd "$tag_dir/no-stub" && jekyll build --destination _site --quiet)
+  check "a tag with no stub file produces no page under _site/tags/" \
+    not test -d "$tag_dir/no-stub/_site/tags/unstubbed-tag"
+
+  # A stub whose tag matches no entry at all: the build still succeeds and
+  # the page shows the explicit empty-state message rather than an empty or
+  # broken list.
+  copy_site_into "$tag_dir/orphaned"
+  mkdir -p "$tag_dir/orphaned/_tags"
+  cat > "$tag_dir/orphaned/_tags/unused.html" <<'FIXTURE'
+---
+layout: tag
+tag: unused
+---
+FIXTURE
+  check "an orphaned tag stub still builds successfully" \
+    bash -c "cd '$tag_dir/orphaned' && jekyll build --destination _site --quiet"
+  orphan_page="$tag_dir/orphaned/_site/tags/unused/index.html"
+  check "an orphaned tag stub's page shows the 'no entries tagged' message" \
+    grep -q 'No entries tagged' "$orphan_page"
+  check "an orphaned tag stub's page renders no entry list" \
+    not grep -q 'entry-list' "$orphan_page"
+
+  rm -rf "$neg_dir" "$pos_dir" "$list_dir" "$home_dir" "$tag_dir"
   trap - EXIT
 else
   echo "FAIL: jekyll is available (gem install jekyll failed - check network access / Ruby gem environment)"

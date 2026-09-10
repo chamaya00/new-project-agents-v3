@@ -6,8 +6,17 @@ collections:
   projects:
     output: true
     permalink: /projects/:path/
+  tags:
+    output: true
+    permalink: /tags/:path/
 
 # _posts is built-in and already output: true; no declaration needed.
+
+# Each _tags/<slug>.html stub is hand-authored, one per tag in use, and
+# nothing in this mechanism keeps that in sync with content - the build
+# cannot tell a tag has fallen out of use (see docs/research/tag-pages.md).
+# The rule that keeps a stub from outliving its last tagged entry:
+# delete a tag's stub file in the same commit that removes its last tagged entry.
 
 # A content file with unparseable front matter must fail the build, not be
 # skipped with a warning. Jekyll's default is to log the YAML error and carry

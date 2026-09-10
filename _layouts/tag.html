@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ page.tag }}</title>
+  <link rel="stylesheet" href="{{ '/css/style.css' | relative_url }}">
+</head>
+<body>
+  <nav class="nav">
+    <a class="nav__brand" href="{{ '/index.html' | relative_url }}">Site Owner</a>
+    <ul class="nav__links">
+      <li><a href="{{ '/index.html' | relative_url }}">Home</a></li>
+      <li><a href="{{ '/projects.html' | relative_url }}">Projects</a></li>
+      <li><a href="{{ '/posts.html' | relative_url }}">Posts</a></li>
+      <li><a href="{{ '/about.html' | relative_url }}">About</a></li>
+    </ul>
+  </nav>
+
+  <main>
+    <h1>{{ page.tag }}</h1>
+    {%- comment -%}
+    Every entry from _posts and _projects whose `tags` list contains
+    page.tag, newest first, rendered through the same entry.html partial the
+    listing pages use. `concat` merges both collections before filtering, so
+    `where_exp` runs once against entries of either type interchangeably; the
+    merge loses site.posts' own free ordering, hence the explicit sort. See
+    docs/research/tag-pages.md's "Cross-collection lookup" and
+    docs/decisions/0002-add-tags-and-a-tag-page-per-collection.md.
+
+    A stub whose tag matches no entry - the drift the research names as this
+    mechanism's standing weak point, since nothing but commit discipline keeps
+    a stub in sync with content - still builds a real page: it shows the
+    empty-state message below instead of an empty or broken list.
+    {%- endcomment -%}
+    {%- assign tagged = site.posts | concat: site.projects | where_exp: "entry", "entry.tags contains page.tag" | sort: "date" | reverse -%}
+    {%- if tagged.size > 0 %}
+    <ul class="entry-list">
+      {%- for entry in tagged %}
+      {% include entry.html entry=entry %}
+      {%- endfor %}
+    </ul>
+    {%- else %}
+    <p class="empty-state">No entries tagged &quot;{{ page.tag }}&quot; yet.</p>
+    {%- endif %}
+  </main>
+</body>
+</html>
