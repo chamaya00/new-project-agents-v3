@@ -1,0 +1,25 @@
+---
+title: "A pomodoro timer for the terminal"
+date: 2026-02-14
+---
+<p>
+  Every pomodoro app I tried wanted to be a window I had to switch to, which
+  defeated the point - the whole idea is to stop switching windows. So this
+  one is a single binary that runs in whatever terminal is already open,
+  prints a countdown in the corner of the prompt, and rings the terminal
+  bell when a session ends. No tray icon, no window, no account.
+</p>
+<p>
+  Configuration is a single dotfile: work length, break length, and how many
+  sessions before a long break. The timer itself persists its state to a
+  small file in <code>/tmp</code>, so closing the terminal by accident
+  doesn't lose the session - reopening it picks the countdown back up from
+  wherever it left off, which is the one feature every other version of this
+  I'd written before it was missing.
+</p>
+<p>
+  It has stayed under three hundred lines since the first working version,
+  and every time I've been tempted to add a feature - statistics, a
+  history log, sound options - the honest answer has been that I would
+  never look at any of it, so it stayed a timer.
+</p>
