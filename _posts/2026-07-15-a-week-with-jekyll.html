@@ -1,0 +1,22 @@
+---
+title: "A week with Jekyll"
+---
+<p>
+  I spent most of this week wiring up Jekyll's collections rather than
+  writing anything I'd call content, which is a strange way to spend a week
+  on a blog. The payoff is that projects and posts are now folders of files
+  instead of pages I hand-edited every time something new shipped - add a
+  file, get a listing entry and a page for it, in that order, with no
+  template copy-pasted from the last one.
+</p>
+<p>
+  The part that took longest wasn't the collections themselves, it was
+  making the build fail loudly when a file's front matter is broken instead
+  of quietly dropping the file from every listing. A build that goes green
+  on a typo is worse than one that never ran, because nothing tells you to
+  go looking for what's missing.
+</p>
+<p>
+  Next up is making the two collections talk to each other - shared tags, a
+  page per tag - but that is next week's problem, not this one's.
+</p>
