@@ -1,0 +1,30 @@
+---
+title: "linkrot"
+date: 2026-05-10
+summary: "A command-line tool that walks a folder of Markdown and reports
+  every link that no longer resolves, so a stale reference gets caught before
+  a reader finds it first."
+---
+<p>
+  This started as a five-line script for checking the links in this very
+  site's docs, and it kept growing until it deserved its own repository.
+  <code>linkrot</code> walks a directory tree, pulls every Markdown link out
+  of every file, and requests each one - HTTP links get a real request,
+  relative links get checked against the filesystem. Anything that comes
+  back 404, times out, or points at a file that has since moved gets printed
+  with the file and line number that referenced it.
+</p>
+<p>
+  The interesting part turned out to be caching. A full run against a few
+  hundred links takes long enough that nobody would run it before every
+  commit, so results are cached by URL with a configurable expiry, and a
+  <code>--changed-only</code> flag limits a run to files touched since the
+  last commit. That is the difference between a tool that runs in CI and one
+  that only ever runs manually, months after the rot has already set in.
+</p>
+<p>
+  It is a single Go binary with no runtime dependencies, which was a
+  deliberate choice - the last version of this idea was a Python script with
+  a virtualenv, and nobody, including me, ever had the environment set up
+  when they actually needed to run it.
+</p>
