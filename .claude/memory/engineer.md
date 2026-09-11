@@ -31,3 +31,9 @@ Add the front-matter header in the same edit that gives a page its first Liquid
 - Jekyll copies a page without front matter through verbatim, so the tags reach
 the browser as literal text with no error and a green build, which is how #19's
 Home would have shipped its Recent area unrendered.
+
+Rewrite the pull request body when a later commit changes the approach, not just
+the commit message - #70's summary still said it set `permalink` site-wide after
+the second commit scoped it through `defaults`, and the top-level key it went on
+advertising is the one that moves `posts.html` and `projects.html` onto
+`index.html`.
