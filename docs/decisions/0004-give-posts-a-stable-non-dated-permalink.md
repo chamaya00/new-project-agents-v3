@@ -15,15 +15,24 @@ should not encode a fact - its publish date - that a project's URL does not.
 
 ## Decision
 
-Set the site-wide `permalink: /posts/:title/` in `_config.yml`. This is
-Jekyll's built-in hook for the default `_posts` collection (no `collections:`
-entry needed, since `_posts` is not user-declared there). `:title` resolves
-to the post's slug - the filename with its leading date and extension
-stripped - giving `/posts/<slug>/`, the same directory-plus-`index.html`
-shape `/projects/<slug>/` already has. No page hand-types a post path -
+Give posts a `permalink: /posts/:title/` default in `_config.yml`, scoped to
+`type: posts` through Jekyll's `defaults` mechanism rather than set as the
+top-level `permalink` key. `:title` resolves to the post's slug - the
+filename with its leading date and extension stripped - giving
+`/posts/<slug>/`, the same directory-plus-`index.html` shape
+`/projects/<slug>/` already has. No page hand-types a post path -
 `_includes/entry.html` already links every entry through
 `entry.url | relative_url` - so `entry.html`, `posts.html`, and `index.html`
 need no change to keep linking correctly.
+
+The top-level `permalink` key was tried first and rejected: it also sets
+Jekyll's site-wide `permalink_style`, which changes how plain `Page` objects
+resolve their own URLs, not just posts. With it set, `jekyll build` moved
+`posts.html` and `projects.html` themselves to `posts/index.html` and
+`projects/index.html`, breaking the listing pages outright - caught by
+watching the rewritten `tests/check.sh` assertions fail for the wrong reason
+before switching to the `defaults`-scoped form, which touches only documents
+of `type: posts`.
 
 ## Consequences
 
