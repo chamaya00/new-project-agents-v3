@@ -46,7 +46,7 @@ on:
 
 jobs:
   ci:
-    uses: chamaya00/agent-factory/.github/workflows/ci.yml@v1.18.1
+    uses: chamaya00/agent-factory/.github/workflows/ci.yml@v1.19.1
     with:
       check-name: 'static-site'
       commands: |
