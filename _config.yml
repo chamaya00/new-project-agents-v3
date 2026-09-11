@@ -2,6 +2,20 @@
 # instead) and declares the one collection this repo adds on top of Jekyll's
 # built-in `_posts`. See docs/decisions/0001-enable-jekyll-for-content-listings.md.
 
+# Posts get the same stable, non-dated shape as projects: /posts/<slug>/,
+# rather than Jekyll's dated default. The old dated URLs stop resolving; see
+# docs/decisions/0004-give-posts-a-stable-non-dated-permalink.md. Scoped to
+# the posts type via `defaults`, not the top-level `permalink` key - that key
+# also sets Jekyll's global permalink_style, which changes how plain Pages
+# (posts.html, projects.html) resolve their own URLs and broke both onto
+# .../index.html instead of .../.html when tried here.
+defaults:
+  - scope:
+      path: ""
+      type: posts
+    values:
+      permalink: /posts/:title/
+
 collections:
   projects:
     output: true
