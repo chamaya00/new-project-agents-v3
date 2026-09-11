@@ -66,7 +66,7 @@ check "_includes/entry.html exists" test -f _includes/entry.html
 # variable depth - goes through Liquid's relative_url, per ADR 0001. So the
 # same grep covers both: a literal root-absolute path is a failure everywhere,
 # including in the include.
-for page in index.html about.html projects.html posts.html _includes/entry.html; do
+for page in index.html about.html projects.html posts.html _includes/entry.html _layouts/entry.html; do
   check "no root-absolute href/src in $page" \
     not grep -Eq 'href="/[^/]|src="/[^/]' "$page"
 done
@@ -232,6 +232,45 @@ if ensure_jekyll; then
 
   check "no sample project declares a tags key" \
     not grep -rEl '^\s*tags\s*:' _projects/
+
+  # Entry pages (issue #69). Every _posts/_projects file now declares
+  # `layout: entry`, so the real build already produces one sample post's
+  # and one sample project's own page - read those, never the layout
+  # source, per this repo's own lesson that Liquid output is only honest
+  # once built.
+  real_post_entry=_site/posts/writing-html-by-hand-again/index.html
+  real_project_entry=_site/projects/linkrot/index.html
+
+  entry_shell_ok() {
+    grep -q '<!doctype html>' "$1" \
+      && grep -q '<nav class="nav">' "$1" \
+      && grep -Eq 'href="[^"]*/css/style.css"' "$1"
+  }
+  check "the sample post's own page ships the full site shell" \
+    entry_shell_ok "$real_post_entry"
+  check "the sample project's own page ships the full site shell" \
+    entry_shell_ok "$real_project_entry"
+
+  check "the sample post's own page shows its title" \
+    grep -q '<h1>Writing HTML by hand again</h1>' "$real_post_entry"
+  check "the sample post's own page shows its readable date" \
+    grep -q '20 August 2026' "$real_post_entry"
+  check "the sample project's own page shows its title" \
+    grep -q '<h1>linkrot</h1>' "$real_project_entry"
+  check "the sample project's own page shows its readable date" \
+    grep -q '10 May 2026' "$real_project_entry"
+
+  check "the sample post's own page's nav marks Posts as current" \
+    grep -q 'href="[^"]*/posts.html" aria-current="page"' "$real_post_entry"
+  check "the sample project's own page's nav marks Projects as current" \
+    grep -q 'href="[^"]*/projects.html" aria-current="page"' "$real_project_entry"
+
+  # The nav band also links to posts.html/projects.html, so the anchor text
+  # distinguishes the closing link (AC2) from that nav link.
+  check "the sample post's own page's closing link points back to Posts" \
+    grep -q 'href="[^"]*/posts.html">← Back to Posts</a>' "$real_post_entry"
+  check "the sample project's own page's closing link points back to Projects" \
+    grep -q 'href="[^"]*/projects.html">← Back to Projects</a>' "$real_project_entry"
 
   # Repository documentation is not site content, and until ADR 0003 it was
   # being published anyway - CLAUDE.md, every ADR, every research note, live
@@ -481,10 +520,18 @@ FIXTURE
   # root-absolute grep the source pages get is applied to Home's built output,
   # allowing only paths the baseurl prefixed. The project also carries a tag
   # (issue #51), so this one grep covers both the entry link and its tag link.
+  # It also declares `layout: entry` on both files (issue #69) - tagged
+  # project, untagged post - so the same fixture proves the entry layout's
+  # tags decision (AC3) and its closing link's base-path resolution (AC2)
+  # without a second build: a bare relative path would emit unprefixed here
+  # exactly as it would on the real site, since both builds share an empty
+  # baseurl otherwise - this fixture's non-empty one is what makes a bare
+  # "posts.html"/"projects.html" observably wrong instead of merely present.
   copy_site_into "$home_dir/baseurl"
   mkdir -p "$home_dir/baseurl/_projects"
   cat > "$home_dir/baseurl/_projects/based-project.html" <<'FIXTURE'
 ---
+layout: entry
 title: "Based fixture project"
 date: 2026-01-01
 tags: [based]
@@ -494,6 +541,7 @@ FIXTURE
   mkdir -p "$home_dir/baseurl/_posts"
   cat > "$home_dir/baseurl/_posts/2026-01-02-based-post.html" <<'FIXTURE'
 ---
+layout: entry
 title: "Based fixture post"
 ---
 <p>Fixture content.</p>
@@ -509,6 +557,35 @@ FIXTURE
     grep -q 'href="/base-fixture/projects/based-project/"' "$home_baseurl"
   check "Home's entry tag links carry the site's base path" \
     grep -q 'href="/base-fixture/tags/based/">based</a>' "$home_baseurl"
+
+  based_project_entry="$home_dir/baseurl/_site/projects/based-project/index.html"
+  based_post_entry="$home_dir/baseurl/_site/posts/based-post/index.html"
+
+  entry_unbased() {
+    grep -oE '(href|src)="/[^"]*' "$1" | grep -vE '^(href|src)="/base-fixture/' || true
+  }
+  check "no root-absolute href/src in the tagged project's own page" \
+    test -z "$(entry_unbased "$based_project_entry")"
+  check "no root-absolute href/src in the untagged post's own page" \
+    test -z "$(entry_unbased "$based_post_entry")"
+
+  check "the tagged project's own page's closing link carries the site's base path" \
+    grep -q 'href="/base-fixture/projects.html">← Back to Projects</a>' "$based_project_entry"
+  check "the untagged post's own page's closing link carries the site's base path" \
+    grep -q 'href="/base-fixture/posts.html">← Back to Posts</a>' "$based_post_entry"
+
+  check "the tagged project's own page's nav marks Projects as current, base-path resolved" \
+    grep -q 'href="/base-fixture/projects.html" aria-current="page"' "$based_project_entry"
+  check "the untagged post's own page's nav marks Posts as current, base-path resolved" \
+    grep -q 'href="/base-fixture/posts.html" aria-current="page"' "$based_post_entry"
+
+  # AC3: the entry page renders a tagged entry's tags, linked and base-path
+  # resolved, the same way the Entry component does on a listing - and
+  # renders no tags element at all for an entry that has none.
+  check "the tagged project's own page shows its tag, base-path resolved" \
+    grep -q 'href="/base-fixture/tags/based/">based</a>' "$based_project_entry"
+  check "the untagged post's own page renders no tags element" \
+    not grep -q 'entry__tags' "$based_post_entry"
 
   # Tag pages (issue #50). One fixture site, three assertions against its
   # built _site/ output: a stubbed tag with matching entries from both
