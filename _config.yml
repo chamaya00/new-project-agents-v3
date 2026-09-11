@@ -2,6 +2,11 @@
 # instead) and declares the one collection this repo adds on top of Jekyll's
 # built-in `_posts`. See docs/decisions/0001-enable-jekyll-for-content-listings.md.
 
+# Posts get the same stable, non-dated shape as projects: /posts/<slug>/,
+# rather than Jekyll's dated default. The old dated URLs stop resolving; see
+# docs/decisions/0004-give-posts-a-stable-non-dated-permalink.md.
+permalink: /posts/:title/
+
 collections:
   projects:
     output: true

@@ -38,6 +38,8 @@ not() {
 check "index.html exists at repo root" test -f index.html
 check "about.html exists at repo root" test -f about.html
 check ".nojekyll is absent (Jekyll processing is on)" not test -f .nojekyll
+check "_config.yml gives posts a stable /posts/:title/ permalink" \
+  grep -Eq '^\s*permalink:\s*/posts/:title/\s*$' _config.yml
 check "_config.yml declares a projects collection" \
   grep -Eq '^\s*projects:\s*$' _config.yml
 check "_config.yml's projects collection sets output: true" \
@@ -51,6 +53,9 @@ check "_config.yml documents deleting a tag's stub with its last entry" \
 check "ADR 0002 status is accepted" \
   grep -Eq '^Status:\s*accepted\s*$' \
     docs/decisions/0002-add-tags-and-a-tag-page-per-collection.md
+check "ADR 0004 status is accepted" \
+  grep -Eq '^Status:\s*accepted\s*$' \
+    docs/decisions/0004-give-posts-a-stable-non-dated-permalink.md
 
 check "projects.html exists at repo root" test -f projects.html
 check "posts.html exists at repo root" test -f posts.html
@@ -172,11 +177,23 @@ if ensure_jekyll; then
     test "$home_recent_posts_order" = "Writing HTML by hand again A week with Jekyll Static by choice "
 
   check "'Writing HTML by hand again' links to a page that exists in the built output" \
-    test -f _site/2026/08/20/writing-html-by-hand-again.html
+    test -f _site/posts/writing-html-by-hand-again/index.html
   check "'A week with Jekyll' links to a page that exists in the built output" \
-    test -f _site/2026/07/15/a-week-with-jekyll.html
+    test -f _site/posts/a-week-with-jekyll/index.html
   check "'Static by choice' links to a page that exists in the built output" \
-    test -f _site/2026/06/01/static-by-choice.html
+    test -f _site/posts/static-by-choice/index.html
+
+  # Posts' old dated permalink (issue #68): the stable /posts/<slug>/ shape
+  # replaces it outright, so none of the old dated paths should exist in the
+  # same build that produces the new ones.
+  check "'Writing HTML by hand again' no longer builds to its old dated path" \
+    not test -e _site/2026/08/20/writing-html-by-hand-again.html
+  check "'A week with Jekyll' no longer builds to its old dated path" \
+    not test -e _site/2026/07/15/a-week-with-jekyll.html
+  check "'Static by choice' no longer builds to its old dated path" \
+    not test -e _site/2026/06/01/static-by-choice.html
+  check "the built site produces no /2026/ dated post directory at all" \
+    not test -d _site/2026
 
   check "'Writing HTML by hand again' shows its summary on posts.html" \
     grep -q 'closing my own tags feels like relearning' _site/posts.html
