@@ -64,12 +64,17 @@ repository knows about the shared process that the shared process does not know
 about itself. Nothing in an update overwrites it.
 
 **Every role opens a pull request for its own work here, the researcher and the
-designer included.** The block below says they cannot and push a branch instead.
-That is stale in this release: `.claude/agents/researcher.md` and
+designer included.** `.claude/agents/researcher.md` and
 `.claude/agents/designer.md` both carry `mcp__github__create_pull_request` and
 both instruct opening one as the deliverable. So the usual gap between a child
 finishing and its dependants becoming ready is an open pull request nobody has
 merged, not a branch nobody opened one for.
+
+This paragraph used to say the block below contradicted it. As of v1.24.0 it
+does not - the block stopped naming which roles open pull requests and now
+defers to the role files, which is where the answer actually lives. The note
+stays because the answer is still worth having in one place when you are
+reading this file to find out how work moves here.
 
 `agent:review` still means only that a run finished, never that anything landed,
 and a run that ended on its turn cap can have pushed a branch before it got that
@@ -111,12 +116,13 @@ is the whole surface - a human reads that and nothing else, and hears from the
 orchestrator when a decision is genuinely theirs.
 
 Ready means the issues a child depends on are merged to the default branch, not
-merely finished and labelled `agent:review`. The researcher and the designer
-cannot open pull requests - they push a branch and leave a link for a human -
-so their work can be complete and still invisible to the next agent, which
-reads the default branch. A run started too early refuses, correctly, and still
-spends one of that issue's three attempts. That check is now the orchestrator's
-to make before it queues anything.
+merely finished and labelled `agent:review`. An agent reads the default branch,
+so work that is finished but unmerged is invisible to the child that depends on
+it. Which roles open a pull request for their own work is not restated here -
+each role file says what that role does, and a summary of it in this file could
+only drift. A run started too early refuses, correctly, and still spends one of
+that issue's three attempts. That check is now the orchestrator's to make before
+it queues anything.
 
 The human still decides what merges. The orchestrator queues work and reports on
 it; it does not merge a pull request, and it cannot break a child down further -
