@@ -91,6 +91,49 @@ for page in index.html about.html projects.html posts.html; do
     not grep -q '<form' "$page"
 done
 
+# --- Visual system doc (issue #78) ----------------------------------------
+# Structural checks against the doc itself, not a build - it's hand-authored
+# markdown, not a page Jekyll renders.
+
+check "docs/design/visual-system.md exists" test -f docs/design/visual-system.md
+
+if [ -f docs/design/visual-system.md ]; then
+  check "visual-system.md has a Light heading" \
+    grep -q '^## Light$' docs/design/visual-system.md
+  check "visual-system.md has a Dark heading" \
+    grep -q '^## Dark$' docs/design/visual-system.md
+  check "visual-system.md has no TBD placeholder" \
+    not grep -q 'TBD' docs/design/visual-system.md
+  check "visual-system.md states dark mode is prefers-color-scheme-only" \
+    grep -qi 'prefers-color-scheme' docs/design/visual-system.md
+  check "visual-system.md states system fonts only" \
+    grep -qi 'system fonts only' docs/design/visual-system.md
+
+  # Extracts one `### Heading` section from the doc, so a criterion about
+  # what one component's spec says (hover, focus, 44px) is checked against
+  # that component's own section, never the whole document.
+  design_section() {
+    awk -v heading="### $2" '
+      $0 == heading { inside = 1; next }
+      inside && /^### / { exit }
+      inside && /^## / { exit }
+      inside { print }
+    ' "$1"
+  }
+
+  for component in "Nav link" "Entry title" "Tag chip" "Button"; do
+    check "\"$component\" section names hover" \
+      grep -qi 'hover' <(design_section docs/design/visual-system.md "$component")
+    check "\"$component\" section names focus" \
+      grep -qi 'focus' <(design_section docs/design/visual-system.md "$component")
+  done
+
+  for component in "Tag chip" "Button"; do
+    check "\"$component\" section names a 44px tap target" \
+      grep -q '44px' <(design_section docs/design/visual-system.md "$component")
+  done
+fi
+
 # --- Jekyll build ---------------------------------------------------------
 # Proves the ADR 0001 mechanism actually works, not just that the config
 # file has the right shape. `jekyll build` fails loudly (non-zero exit) on
