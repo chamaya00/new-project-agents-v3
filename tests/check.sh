@@ -447,16 +447,39 @@ check "\".empty-state\" uses the body type scale" \
 # WCAG's large-text threshold - so it counts as body text and needs 4.5:1,
 # not the 3:1 non-text minimum; see docs/design/visual-system.md's
 # Typography section for the 0.875rem metadata scale this reuses.
-light_border="$(custom_prop_value '--color-border' 1)"
-dark_border="$(custom_prop_value '--color-border' 2)"
+#
+# Reads which custom property each declaration actually references, rather
+# than assuming the chip's text is --color-accent and its hover fill is
+# --color-border - the same "reads the shipped rule" standard the rest of
+# this section holds to. A property declared as a literal hex rather than a
+# var(...) resolves to an empty token name and an empty hex, which fails the
+# check below rather than silently comparing nothing against something.
+css_custom_prop_ref() {
+  grep -oE -- "$2: var\(--[a-zA-Z0-9-]+\)" <<< "$1" | grep -oE -- '--[a-zA-Z0-9-]+'
+}
 
-light_chip_hover_ratio="$(contrast_ratio "$light_accent" "$light_border")"
-dark_chip_hover_ratio="$(contrast_ratio "$dark_accent" "$dark_border")"
+chip_rule="$(css_rule css/style.css '.entry__tag a')"
+chip_hover_rule="$(css_rule css/style.css '.entry__tag a:hover')"
+chip_text_var="$(css_custom_prop_ref "$chip_rule" color)"
+chip_bg_var="$(css_custom_prop_ref "$chip_rule" background)"
+chip_hover_bg_var="$(css_custom_prop_ref "$chip_hover_rule" background)"
 
-check "light-scheme chip text-on-fill (normal) meets WCAG AA 4.5:1 (computed $light_accent_on_surface:1)" \
-  meets_aa "$light_accent_on_surface"
-check "dark-scheme chip text-on-fill (normal) meets WCAG AA 4.5:1 (computed $dark_accent_on_surface:1)" \
-  meets_aa "$dark_accent_on_surface"
+light_chip_text="$(custom_prop_value "$chip_text_var" 1)"
+dark_chip_text="$(custom_prop_value "$chip_text_var" 2)"
+light_chip_bg="$(custom_prop_value "$chip_bg_var" 1)"
+dark_chip_bg="$(custom_prop_value "$chip_bg_var" 2)"
+light_chip_hover_bg="$(custom_prop_value "$chip_hover_bg_var" 1)"
+dark_chip_hover_bg="$(custom_prop_value "$chip_hover_bg_var" 2)"
+
+light_chip_normal_ratio="$(contrast_ratio "$light_chip_text" "$light_chip_bg")"
+dark_chip_normal_ratio="$(contrast_ratio "$dark_chip_text" "$dark_chip_bg")"
+light_chip_hover_ratio="$(contrast_ratio "$light_chip_text" "$light_chip_hover_bg")"
+dark_chip_hover_ratio="$(contrast_ratio "$dark_chip_text" "$dark_chip_hover_bg")"
+
+check "light-scheme chip text-on-fill (normal) meets WCAG AA 4.5:1 (computed $light_chip_normal_ratio:1)" \
+  meets_aa "$light_chip_normal_ratio"
+check "dark-scheme chip text-on-fill (normal) meets WCAG AA 4.5:1 (computed $dark_chip_normal_ratio:1)" \
+  meets_aa "$dark_chip_normal_ratio"
 check "light-scheme chip text-on-fill (hover) meets WCAG AA 4.5:1 (computed $light_chip_hover_ratio:1)" \
   meets_aa "$light_chip_hover_ratio"
 check "dark-scheme chip text-on-fill (hover) meets WCAG AA 4.5:1 (computed $dark_chip_hover_ratio:1)" \
