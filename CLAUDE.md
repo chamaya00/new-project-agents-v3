@@ -72,13 +72,21 @@ is the whole surface - read that, and the orchestrator comes to you when a
 decision is genuinely yours.
 
 Ready means the issues a child depends on are merged to `main`, not merely
-labelled `agent:review`. The researcher and the designer cannot open pull
-requests, so their work can be complete, labelled `agent:review`, and still
-absent from the branch the next agent reads. Checking that is the orchestrator's
-job before it queues anything.
+labelled `agent:review`. Every role opens a pull request for its own work now,
+the researcher and the designer included, so the usual gap is an open pull
+request nobody has merged yet rather than a branch nobody opened one for. But
+`agent:review` still means a run finished, never that anything landed, and a run
+that ended on its turn cap can have pushed a branch before it got that far.
+Telling those two apart is the orchestrator's job before it queues anything, and
+it says which one it is looking at - "waiting on a merge" sends you to a page
+with nothing on it when no pull request exists.
 
-Merging is still yours, and the orchestrator cannot break a child down further -
-that comes back as `needs-decomposition` and a comment on the parent.
+Merging is still yours by default. An objective may carry a `Merge policy: green`
+line in its body, which hands that objective's children to your own session to
+merge once each passes the gate in the house-rules skill - scoped to that one
+objective, revoked by editing the issue, and never written by a role. The
+orchestrator cannot break a child down further - that comes back as
+`needs-decomposition` and a comment on the parent.
 
 **This needs the agent App configured.** Events raised by the default Actions
 token do not start workflow runs, so without `AGENT_APP_ID` and
@@ -87,8 +95,13 @@ objective decomposes and then stops, silently, with correctly labelled children
 that never run. Without the App, queue each child by hand - the older flow.
 
 Labels: `objective`, `agent:queued`, `agent:running`, `agent:review`,
-`agent:blocked`, `needs-decomposition`, `role:researcher`, `role:designer`,
-`role:engineer`.
+`agent:blocked`, `needs-decomposition`, `needs-human`, `role:researcher`,
+`role:designer`, `role:engineer`.
+
+`needs-human` arrived with factory v1.21.0 and marks an objective waiting on a
+person rather than on a run. The labels are created by the `bootstrap` workflow,
+so it does not exist here until that is re-run by hand from the Actions tab -
+and the orchestrator is already instructed to apply it.
 
 ## Standing rules
 
