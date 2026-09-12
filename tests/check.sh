@@ -85,10 +85,20 @@ check "posts.html nav marks Posts as current" \
   grep -q 'href="posts.html" aria-current="page"' posts.html
 
 for page in index.html about.html projects.html posts.html; do
-  check "no off-repo <script src= in $page" \
-    not grep -Eq '<script[^>]+src="(https?:)?//' "$page"
   check "no form action= in $page" \
     not grep -q '<form' "$page"
+done
+
+# The site ships zero JavaScript (objective #77's outcome 10): any <script>
+# tag at all - inline, same-origin, or off-repo - is a violation, not just an
+# off-repo src=. Covers the two hand-authored pages left (about.html,
+# index.html now needs the Jekyll build too but its source is still plain
+# text), the two Liquid pages, and the two layouts every generated page goes
+# through - a script slipped into a layout reaches every entry/tag page it
+# renders, not just one file.
+for page in index.html about.html projects.html posts.html _layouts/entry.html _layouts/tag.html; do
+  check "no <script> tag in $page" \
+    not grep -Eiq '<script[ >]' "$page"
 done
 
 # --- Visual system doc (issue #78) ----------------------------------------
@@ -290,6 +300,109 @@ check "light-scheme entry date meets WCAG AA 4.5:1 (computed $light_date_ratio:1
   meets_aa "$light_date_ratio"
 check "dark-scheme entry date meets WCAG AA 4.5:1 (computed $dark_date_ratio:1)" \
   meets_aa "$dark_date_ratio"
+
+# --- Hover/focus states, accent link colour, script gate (issue #80) ------
+# Zero :hover/:focus rules existed in css/style.css before this issue,
+# color: inherit marked four link types, and the focus ring is a non-text
+# indicator that has to clear 3:1 against whatever actually sits behind it -
+# page background for four of the five interactive elements, the entry
+# surface for the fifth (.entry__title a lives inside .entry, which #79 gave
+# a --color-surface background).
+
+has_hover_rule() {
+  grep -Fq "$1:hover {" css/style.css
+}
+
+# Accepts either :focus or :focus-visible, per the criterion's "(or
+# :focus-visible)".
+focus_block() {
+  local block
+  block="$(css_rule css/style.css "$1:focus-visible")"
+  if [ -z "$block" ]; then
+    block="$(css_rule css/style.css "$1:focus")"
+  fi
+  printf '%s' "$block"
+}
+
+has_focus_rule() {
+  test -n "$(focus_block "$1")"
+}
+
+focus_rule_uses_focus_ring() {
+  grep -q 'outline: 2px solid var(--color-focus);' <<< "$(focus_block "$1")"
+}
+
+interactive_selectors=(".nav__brand" ".nav__links a" ".entry__title a" ".contact-links a" ".entry__back")
+for sel in "${interactive_selectors[@]}"; do
+  check "\"$sel\" has a :hover rule" has_hover_rule "$sel"
+  check "\"$sel\" has a :focus/:focus-visible rule" has_focus_rule "$sel"
+  check "\"$sel\"'s focus rule uses the doc's focus-ring colour" \
+    focus_rule_uses_focus_ring "$sel"
+done
+
+# color: inherit is gone from the four link types the issue names, and each
+# now resolves to the doc's accent colour instead. (.entry__back is not one
+# of the four - its colour is out of scope here, per the Button component
+# being a later issue's work.)
+link_selectors=(".nav__brand" ".nav__links a" ".entry__title a" ".contact-links a")
+for sel in "${link_selectors[@]}"; do
+  check "\"$sel\" does not set color: inherit" \
+    not grep -q 'color: inherit;' <(css_rule css/style.css "$sel")
+  check "\"$sel\" resolves to the --color-accent token" \
+    grep -q 'color: var(--color-accent);' <(css_rule css/style.css "$sel")
+done
+
+light_accent="$(custom_prop_value '--color-accent' 1)"
+dark_accent="$(custom_prop_value '--color-accent' 2)"
+light_focus="$(custom_prop_value '--color-focus' 1)"
+dark_focus="$(custom_prop_value '--color-focus' 2)"
+
+check "light --color-accent is the doc's #1552cc" test "$light_accent" = "#1552cc"
+check "dark --color-accent is the doc's #5b9dff" test "$dark_accent" = "#5b9dff"
+check "light --color-focus is the doc's #1552cc" test "$light_focus" = "#1552cc"
+check "dark --color-focus is the doc's #5b9dff" test "$dark_focus" = "#5b9dff"
+
+meets_non_text_aa() {
+  awk -v r="$1" 'BEGIN { exit !(r + 0 >= 3) }'
+}
+
+light_accent_on_bg="$(contrast_ratio "$light_accent" "$light_bg")"
+dark_accent_on_bg="$(contrast_ratio "$dark_accent" "$dark_bg")"
+light_accent_on_surface="$(contrast_ratio "$light_accent" "$light_surface")"
+dark_accent_on_surface="$(contrast_ratio "$dark_accent" "$dark_surface")"
+
+# AC2: each accent link's colour pair, checked against the backdrop it
+# actually renders on - surface for .entry__title a (inside .entry), page
+# background for the other three.
+for sel in ".nav__brand" ".nav__links a" ".contact-links a"; do
+  check "light-scheme \"$sel\" accent-on-background meets WCAG AA (computed $light_accent_on_bg:1)" \
+    meets_aa "$light_accent_on_bg"
+  check "dark-scheme \"$sel\" accent-on-background meets WCAG AA (computed $dark_accent_on_bg:1)" \
+    meets_aa "$dark_accent_on_bg"
+done
+check "light-scheme \".entry__title a\" accent-on-surface meets WCAG AA (computed $light_accent_on_surface:1)" \
+  meets_aa "$light_accent_on_surface"
+check "dark-scheme \".entry__title a\" accent-on-surface meets WCAG AA (computed $dark_accent_on_surface:1)" \
+  meets_aa "$dark_accent_on_surface"
+
+light_focus_on_bg="$(contrast_ratio "$light_focus" "$light_bg")"
+dark_focus_on_bg="$(contrast_ratio "$dark_focus" "$dark_bg")"
+light_focus_on_surface="$(contrast_ratio "$light_focus" "$light_surface")"
+dark_focus_on_surface="$(contrast_ratio "$dark_focus" "$dark_surface")"
+
+# AC3: the focus ring's own colour pair, against every backdrop it actually
+# renders over - surface for the ring on .entry__title a, page background for
+# the other four elements named in AC1 - at the 3:1 non-text minimum.
+for sel in ".nav__brand" ".nav__links a" ".contact-links a" ".entry__back"; do
+  check "light-scheme focus ring on \"$sel\" (over page background) meets 3:1 (computed $light_focus_on_bg:1)" \
+    meets_non_text_aa "$light_focus_on_bg"
+  check "dark-scheme focus ring on \"$sel\" (over page background) meets 3:1 (computed $dark_focus_on_bg:1)" \
+    meets_non_text_aa "$dark_focus_on_bg"
+done
+check "light-scheme focus ring on \".entry__title a\" (over surface) meets 3:1 (computed $light_focus_on_surface:1)" \
+  meets_non_text_aa "$light_focus_on_surface"
+check "dark-scheme focus ring on \".entry__title a\" (over surface) meets 3:1 (computed $dark_focus_on_surface:1)" \
+  meets_non_text_aa "$dark_focus_on_surface"
 
 # --- Jekyll build ---------------------------------------------------------
 # Proves the ADR 0001 mechanism actually works, not just that the config

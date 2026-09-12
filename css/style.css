@@ -9,6 +9,8 @@
   --color-bg: #ffffff;
   --color-text: #1a1a1a;
   --color-text-muted: #595959;
+  --color-accent: #1552cc;
+  --color-focus: #1552cc;
   --color-surface: #f4f6fa;
   --color-border: #e0e0e0;
 
@@ -25,6 +27,8 @@
     --color-bg: #121212;
     --color-text: #e8e8e8;
     --color-text-muted: #b0b0b0;
+    --color-accent: #5b9dff;
+    --color-focus: #5b9dff;
     --color-surface: #1c1f26;
     --color-border: #333333;
   }
@@ -68,10 +72,19 @@ img {
 .nav__brand {
   font-weight: 700;
   text-decoration: none;
-  color: inherit;
+  color: var(--color-accent);
   display: flex;
   align-items: center;
   min-height: 44px;
+}
+
+.nav__brand:hover {
+  text-decoration: underline;
+}
+
+.nav__brand:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
 }
 
 .nav__links {
@@ -86,8 +99,17 @@ img {
   display: flex;
   align-items: center;
   min-height: 44px;
-  color: inherit;
+  color: var(--color-accent);
   text-decoration: none;
+}
+
+.nav__links a:hover {
+  text-decoration: underline;
+}
+
+.nav__links a:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
 }
 
 .nav__links a[aria-current="page"] {
@@ -104,7 +126,16 @@ main {
 }
 
 .contact-links a {
-  color: inherit;
+  color: var(--color-accent);
+}
+
+.contact-links a:hover {
+  text-decoration: underline;
+}
+
+.contact-links a:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
 }
 
 /* Entry list: one column at any width, per docs/design/projects-and-posts.md -
@@ -134,7 +165,16 @@ main {
 }
 
 .entry__title a {
-  color: inherit;
+  color: var(--color-accent);
+}
+
+.entry__title a:hover {
+  text-decoration: underline;
+}
+
+.entry__title a:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
 }
 
 .entry__date,
@@ -146,6 +186,20 @@ main {
   color: var(--color-text-muted);
   font-size: 0.875rem;
   line-height: 1.4;
+}
+
+/* The entry page's closing "Back to Projects"/"Back to Posts" link
+   (_layouts/entry.html). Fill/padding treatment as a button is a later
+   issue's scope (docs/design/visual-system.md's Button component) - this
+   issue only adds the hover/focus states every interactive element needs. */
+
+.entry__back:hover {
+  text-decoration: none;
+}
+
+.entry__back:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
 }
 
 /* Recent area on Home: two labelled subsections stacked below the fixed
