@@ -121,7 +121,94 @@ Leave alone, always:
 - Everything under `.claude/memory/`. Those are this repository's lessons, and
   they are the reason the roles are copied in rather than shared live. Nothing
   in an update reads them, writes them, or carries them anywhere.
-- `CLAUDE.md`. It describes this product, not the process.
+- `.claude/settings.json`, apart from the one `SessionStart` entry named in
+  step 3c. Permissions, env, and the project's own hooks are the project's.
+- The part of `CLAUDE.md` outside the managed block. That half describes this
+  product - its stack, its commands, what it is - and belongs to the repository.
+  The block is a different matter; see below.
+
+## 3b. Replace the managed block in `CLAUDE.md`
+
+`CLAUDE.md` was skipped entirely for a long time, on the stated grounds that it
+describes the product rather than the process. That was true of about half of
+it. The other half - how work moves, what drives an objective, the standing
+rules, the labels - describes the shared system, and skipping it meant every
+release quietly desynchronised every project's own description of itself. The
+drift was invisible until somebody read a sentence that contradicted the roles
+they were watching run.
+
+So the file carries a boundary now:
+
+```
+<!-- agent-factory:begin -->
+...shared process prose, owned here...
+<!-- agent-factory:end -->
+```
+
+**If both markers are present:** replace everything between them with the block
+from this release's `templates/project/CLAUDE.md`, and change nothing outside
+them. That is the whole operation - no merging, no reconciling, no cleverness.
+
+**If the markers are absent**, the repository predates them, and inserting them
+is the one genuinely dangerous step in this command. Sections that the factory
+now owns may have been edited in place over months, and wrapping them means the
+next update overwrites whatever is there. So do not wrap silently:
+
+1. Find the sections the block covers by heading. They are stable names and they
+   sit together at the end of the file.
+2. Diff what is there against this release's block, and **put the differences in
+   the pull request body, quoted**, under a heading that says these lines will be
+   replaced. Prose a person wrote about their own repository is the thing being
+   destroyed, and they get to see it before it goes.
+3. Anything that is plainly specific to this repository - a note about a step
+   only this project needs, a caveat about its own setup - is moved *outside*
+   the block rather than dropped. Say in the body where it went.
+4. Only then insert the markers.
+
+**If a marker is present but malformed** - one without the other, or `end`
+before `begin` - stop and say so. Do not guess where the block was meant to
+start; a wrong guess deletes the repository's own prose and looks like a
+successful update.
+
+**When the block cannot be replaced for any reason**, report rather than skip
+silently: list, in the body, the statements in `CLAUDE.md` that this release has
+made false. A drift a person can see is a chore; a drift nobody can see is what
+this step exists to end.
+
+## 3c. The session-start hook, and the one key it is wired by
+
+Two files, and they do not travel the same way, for the same reason `CLAUDE.md`
+needed a block: one is wholly ours and one is not.
+
+**`.claude/hooks/session-start.sh` is wholly the factory's.** Copy it wholesale,
+exactly like a skill, and make sure it stays executable - a hook without the
+execute bit is wired, silent, and looks like it ran.
+
+**`.claude/settings.json` belongs to the project.** It is where permissions, env,
+and the project's own hooks live, and overwriting it destroys configuration
+nobody asked you to touch. So make a **bounded edit**:
+
+- Add or update **only** the `SessionStart` entry that points at
+  `$CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh`. Leave every other key
+  exactly as it is, including other hooks on the same event.
+- If the file does not exist, create it carrying that one key and nothing else.
+- Never add a `permissions` key, and never widen one that is there. The factory
+  does not get to decide what a project's automation may do, and
+  `project-guard` now fails a diff that tries - which is a backstop, not
+  permission to lean on it.
+
+**Say it in the body, under a `Privilege change:` line.** A repository that
+merges this starts executing a script on every session start that it was not
+executing before. That is true even though the script is ours and does nothing
+but report, and it is exactly the kind of change this system refuses to let
+through quietly. The guard will stop the pull request without that line, and it
+is right to.
+
+What the hook buys is worth stating for the person reading: `CLAUDE.md` is
+static and can only say a session is the driver; the hook runs, so it can say
+what is actually waiting. If a project would rather not run it, deleting the
+`SessionStart` entry costs them the briefing and nothing else - the driver role
+comes from `CLAUDE.md` and survives.
 
 ## 4. Say what it does in the body
 
