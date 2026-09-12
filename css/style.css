@@ -10,6 +10,8 @@
   --color-text: #1a1a1a;
   --color-text-muted: #595959;
   --color-accent: #1552cc;
+  --color-accent-hover: #103f99;
+  --color-accent-text: #ffffff;
   --color-focus: #1552cc;
   --color-surface: #f4f6fa;
   --color-border: #e0e0e0;
@@ -28,6 +30,8 @@
     --color-text: #e8e8e8;
     --color-text-muted: #b0b0b0;
     --color-accent: #5b9dff;
+    --color-accent-hover: #82b4ff;
+    --color-accent-text: #121212;
     --color-focus: #5b9dff;
     --color-surface: #1c1f26;
     --color-border: #333333;
@@ -188,18 +192,74 @@ main {
   line-height: 1.4;
 }
 
+/* Tag chip, per docs/design/visual-system.md's Tag chip component. The pill
+   treatment (fill, border, radius, tap target) lives on the link, the actual
+   interactive/focusable element - .entry__tags/.entry__tag only clear the
+   list's own default rendering. */
+
+.entry__tags {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-1) 0 0;
+  padding: 0;
+}
+
+.entry__tag a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border-radius: 999px;
+  font-size: 0.875rem;
+  background: var(--color-surface);
+  color: var(--color-accent);
+  border: 1px solid var(--color-border);
+  text-decoration: none;
+}
+
+.entry__tag a:hover {
+  background: var(--color-border);
+}
+
+.entry__tag a:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
 /* The entry page's closing "Back to Projects"/"Back to Posts" link
-   (_layouts/entry.html). Fill/padding treatment as a button is a later
-   issue's scope (docs/design/visual-system.md's Button component) - this
-   issue only adds the hover/focus states every interactive element needs. */
+   (_layouts/entry.html), styled as a filled button per
+   docs/design/visual-system.md's Button component. */
+
+.entry__back {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-4);
+  border-radius: 6px;
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+  text-decoration: none;
+}
 
 .entry__back:hover {
-  text-decoration: none;
+  background: var(--color-accent-hover);
 }
 
 .entry__back:focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 2px;
+}
+
+/* Empty-state text (_layouts/tag.html and the listing pages' own empty
+   states), per docs/design/visual-system.md's Empty-state component - muted
+   status text, body scale, no hover/focus since it is static, not a control. */
+
+.empty-state {
+  color: var(--color-text-muted);
+  font-size: 1rem;
+  font-weight: 400;
 }
 
 /* Recent area on Home: two labelled subsections stacked below the fixed

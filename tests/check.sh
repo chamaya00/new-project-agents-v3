@@ -404,6 +404,87 @@ check "light-scheme focus ring on \".entry__title a\" (over surface) meets 3:1 (
 check "dark-scheme focus ring on \".entry__title a\" (over surface) meets 3:1 (computed $dark_focus_on_surface:1)" \
   meets_non_text_aa "$dark_focus_on_surface"
 
+# --- Tag chips, back-link button, empty-state (issue #81) ------------------
+# .entry__tag had zero CSS before this issue and rendered as a default
+# bulleted list; .entry__back was plain hover/focus-only text (issue #80's
+# own scope note said the button's fill/padding was later work - this issue
+# is that later work); .empty-state had no CSS at all. Reads the shipped
+# rules directly, per the finding on this issue from #78/#80's review: a
+# doc-level "44px" grep proves the number is mentioned, not that the shipped
+# CSS carries it, so the checks below read css/style.css's own declarations.
+
+check "\".entry__tags\" has no list marker" \
+  grep -q 'list-style: none;' <(css_rule css/style.css .entry__tags)
+
+check "\".entry__tag a\" has a 44px minimum tap target" \
+  grep -q 'min-height: 44px;' <(css_rule css/style.css '.entry__tag a')
+check "\".entry__tag a\" has a background distinct from the page" \
+  grep -q 'background: var(--color-surface);' <(css_rule css/style.css '.entry__tag a')
+check "\".entry__tag a\" has a border distinct from the page" \
+  grep -q 'border: 1px solid var(--color-border);' <(css_rule css/style.css '.entry__tag a')
+check "\".entry__tag a\" has a :hover rule" has_hover_rule ".entry__tag a"
+check "\".entry__tag a\" has a :focus/:focus-visible rule" has_focus_rule ".entry__tag a"
+check "\".entry__tag a\"'s focus rule uses the doc's focus-ring colour" \
+  focus_rule_uses_focus_ring ".entry__tag a"
+
+check "no default list-style-type remains on the tag list" \
+  not grep -q 'list-style-type: disc' css/style.css
+
+check "\".entry__back\" has a 44px minimum tap target" \
+  grep -q 'min-height: 44px;' <(css_rule css/style.css .entry__back)
+check "\".entry__back\" has a filled background distinct from the page" \
+  grep -q 'background: var(--color-accent);' <(css_rule css/style.css .entry__back)
+check "\".entry__back\"'s hover state darkens/lightens its fill, not just its text" \
+  grep -q 'background: var(--color-accent-hover);' <(css_rule css/style.css '.entry__back:hover')
+
+check "\".empty-state\" uses the muted-text token" \
+  grep -q 'color: var(--color-text-muted);' <(css_rule css/style.css .empty-state)
+check "\".empty-state\" uses the body type scale" \
+  grep -q 'font-size: 1rem;' <(css_rule css/style.css .empty-state)
+
+# AC5: the chip's text-on-fill colour pair, in both its normal and hover
+# states, against both schemes. The text is 0.875rem/14px - well under
+# WCAG's large-text threshold - so it counts as body text and needs 4.5:1,
+# not the 3:1 non-text minimum; see docs/design/visual-system.md's
+# Typography section for the 0.875rem metadata scale this reuses.
+#
+# Reads which custom property each declaration actually references, rather
+# than assuming the chip's text is --color-accent and its hover fill is
+# --color-border - the same "reads the shipped rule" standard the rest of
+# this section holds to. A property declared as a literal hex rather than a
+# var(...) resolves to an empty token name and an empty hex, which fails the
+# check below rather than silently comparing nothing against something.
+css_custom_prop_ref() {
+  grep -oE -- "$2: var\(--[a-zA-Z0-9-]+\)" <<< "$1" | grep -oE -- '--[a-zA-Z0-9-]+'
+}
+
+chip_rule="$(css_rule css/style.css '.entry__tag a')"
+chip_hover_rule="$(css_rule css/style.css '.entry__tag a:hover')"
+chip_text_var="$(css_custom_prop_ref "$chip_rule" color)"
+chip_bg_var="$(css_custom_prop_ref "$chip_rule" background)"
+chip_hover_bg_var="$(css_custom_prop_ref "$chip_hover_rule" background)"
+
+light_chip_text="$(custom_prop_value "$chip_text_var" 1)"
+dark_chip_text="$(custom_prop_value "$chip_text_var" 2)"
+light_chip_bg="$(custom_prop_value "$chip_bg_var" 1)"
+dark_chip_bg="$(custom_prop_value "$chip_bg_var" 2)"
+light_chip_hover_bg="$(custom_prop_value "$chip_hover_bg_var" 1)"
+dark_chip_hover_bg="$(custom_prop_value "$chip_hover_bg_var" 2)"
+
+light_chip_normal_ratio="$(contrast_ratio "$light_chip_text" "$light_chip_bg")"
+dark_chip_normal_ratio="$(contrast_ratio "$dark_chip_text" "$dark_chip_bg")"
+light_chip_hover_ratio="$(contrast_ratio "$light_chip_text" "$light_chip_hover_bg")"
+dark_chip_hover_ratio="$(contrast_ratio "$dark_chip_text" "$dark_chip_hover_bg")"
+
+check "light-scheme chip text-on-fill (normal) meets WCAG AA 4.5:1 (computed $light_chip_normal_ratio:1)" \
+  meets_aa "$light_chip_normal_ratio"
+check "dark-scheme chip text-on-fill (normal) meets WCAG AA 4.5:1 (computed $dark_chip_normal_ratio:1)" \
+  meets_aa "$dark_chip_normal_ratio"
+check "light-scheme chip text-on-fill (hover) meets WCAG AA 4.5:1 (computed $light_chip_hover_ratio:1)" \
+  meets_aa "$light_chip_hover_ratio"
+check "dark-scheme chip text-on-fill (hover) meets WCAG AA 4.5:1 (computed $dark_chip_hover_ratio:1)" \
+  meets_aa "$dark_chip_hover_ratio"
+
 # --- Jekyll build ---------------------------------------------------------
 # Proves the ADR 0001 mechanism actually works, not just that the config
 # file has the right shape. `jekyll build` fails loudly (non-zero exit) on
@@ -1023,6 +1104,49 @@ FIXTURE
   (cd "$list_dir/empty-tags-list" && jekyll build --destination _site --quiet)
   check "an entry with an empty tags list renders no tag container" \
     not grep -q 'entry__tags' "$list_dir/empty-tags-list/_site/projects.html"
+
+  # AC2 (issue #81): the chip renders identically on all five surfaces that
+  # show tags. Four of the five are already built above by other issues'
+  # fixtures - $home_baseurl (Home) and $based_project_entry (a generated
+  # entry page) from the baseurl fixture, $tagged_page (projects.html) from
+  # the entry-tags fixture just above, $design_page (a generated tag page)
+  # from the tag-pages fixture - so this only builds the one surface nothing
+  # else already covers: a tagged post on posts.html.
+  copy_site_into "$list_dir/tagged-post"
+  mkdir -p "$list_dir/tagged-post/_posts"
+  cat > "$list_dir/tagged-post/_posts/2026-01-03-tagged-post.html" <<'FIXTURE'
+---
+title: "Tagged fixture post"
+date: 2026-01-01
+tags: [design]
+---
+<p>Fixture content.</p>
+FIXTURE
+  (cd "$list_dir/tagged-post" && jekyll build --destination _site --quiet)
+  tagged_post_page="$list_dir/tagged-post/_site/posts.html"
+
+  check "the chip class renders on Home" \
+    grep -q 'class="entry__tag"' "$home_baseurl"
+  check "the chip class renders on projects.html" \
+    grep -q 'class="entry__tag"' "$tagged_page"
+  check "the chip class renders on posts.html" \
+    grep -q 'class="entry__tag"' "$tagged_post_page"
+  check "the chip class renders on a generated entry page" \
+    grep -q 'class="entry__tag"' "$based_project_entry"
+  check "the chip class renders on a generated tag page" \
+    grep -q 'class="entry__tag"' "$design_page"
+
+  # AC3 (issue #81): the back-link button's class survives in the real
+  # build's own generated entry pages, not just the template source.
+  check "the sample post's own page's closing link carries the entry__back class" \
+    grep -q 'class="entry__back"' "$real_post_entry"
+  check "the sample project's own page's closing link carries the entry__back class" \
+    grep -q 'class="entry__back"' "$real_project_entry"
+
+  # AC4 (issue #81): the empty-state class survives in a built tag page with
+  # no matching entries - reuses $unused_page, already built above.
+  check "the empty tag page's message carries the empty-state class" \
+    grep -q 'class="empty-state"' "$unused_page"
 
   rm -rf "$neg_dir" "$pos_dir" "$list_dir" "$home_dir" "$tag_dir"
   trap - EXIT
