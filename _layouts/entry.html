@@ -36,9 +36,9 @@
     {{ content }}
 
     {%- if page.collection == "projects" %}
-    <p><a href="{{ '/projects.html' | relative_url }}">← Back to Projects</a></p>
+    <p><a class="entry__back" href="{{ '/projects.html' | relative_url }}">← Back to Projects</a></p>
     {%- else %}
-    <p><a href="{{ '/posts.html' | relative_url }}">← Back to Posts</a></p>
+    <p><a class="entry__back" href="{{ '/posts.html' | relative_url }}">← Back to Posts</a></p>
     {%- endif %}
   </main>
 </body>
