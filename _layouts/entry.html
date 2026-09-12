@@ -1,0 +1,45 @@
+---
+# Front matter is what makes Jekyll run Liquid over this layout; the layout
+# itself needs no values of its own. Each _posts/_projects file sets
+# `layout: entry`, which is all this layout reads from the page it renders.
+---
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ page.title }}</title>
+  <link rel="stylesheet" href="{{ '/css/style.css' | relative_url }}">
+</head>
+<body>
+  <nav class="nav">
+    <a class="nav__brand" href="{{ '/index.html' | relative_url }}">Site Owner</a>
+    <ul class="nav__links">
+      <li><a href="{{ '/index.html' | relative_url }}">Home</a></li>
+      <li><a href="{{ '/projects.html' | relative_url }}"{% if page.collection == "projects" %} aria-current="page"{% endif %}>Projects</a></li>
+      <li><a href="{{ '/posts.html' | relative_url }}"{% if page.collection == "posts" %} aria-current="page"{% endif %}>Posts</a></li>
+      <li><a href="{{ '/about.html' | relative_url }}">About</a></li>
+    </ul>
+  </nav>
+
+  <main>
+    <h1>{{ page.title }}</h1>
+    <p class="entry__date"><time datetime="{{ page.date | date_to_xmlschema }}">{{ page.date | date: "%-d %B %Y" }}</time></p>
+    {%- if page.tags.size > 0 %}
+    <ul class="entry__tags">
+      {%- for tag in page.tags %}
+      <li class="entry__tag"><a href="{{ '/tags/' | append: tag | append: '/' | relative_url }}">{{ tag }}</a></li>
+      {%- endfor %}
+    </ul>
+    {%- endif %}
+
+    {{ content }}
+
+    {%- if page.collection == "projects" %}
+    <p><a href="{{ '/projects.html' | relative_url }}">← Back to Projects</a></p>
+    {%- else %}
+    <p><a href="{{ '/posts.html' | relative_url }}">← Back to Posts</a></p>
+    {%- endif %}
+  </main>
+</body>
+</html>
