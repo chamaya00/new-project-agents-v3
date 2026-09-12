@@ -64,12 +64,17 @@ repository knows about the shared process that the shared process does not know
 about itself. Nothing in an update overwrites it.
 
 **Every role opens a pull request for its own work here, the researcher and the
-designer included.** The block below says they cannot and push a branch instead.
-That is stale in this release: `.claude/agents/researcher.md` and
+designer included.** `.claude/agents/researcher.md` and
 `.claude/agents/designer.md` both carry `mcp__github__create_pull_request` and
 both instruct opening one as the deliverable. So the usual gap between a child
 finishing and its dependants becoming ready is an open pull request nobody has
 merged, not a branch nobody opened one for.
+
+This paragraph used to say the block below contradicted it. As of v1.24.0 it
+does not - the block stopped naming which roles open pull requests and now
+defers to the role files, which is where the answer actually lives. The note
+stays because the answer is still worth having in one place when you are
+reading this file to find out how work moves here.
 
 `agent:review` still means only that a run finished, never that anything landed,
 and a run that ended on its turn cap can have pushed a branch before it got that
