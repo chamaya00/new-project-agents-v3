@@ -134,6 +134,163 @@ if [ -f docs/design/visual-system.md ]; then
   done
 fi
 
+# --- Palette, type scale, spacing, dark mode (issue #79) -------------------
+# css/style.css now carries the doc's values as :root custom properties
+# (light) re-declared inside a `prefers-color-scheme: dark` block, rather
+# than as hardcoded per-rule literals - the mechanism the doc's own
+# Implementation notes name. Three of the doc's four light-scheme "unchanged"
+# values (#1a1a1a text, #e0e0e0 border, #595959 muted text) are therefore
+# still present in the file, as the one place that defines each token - a
+# blanket "value never appears" grep would fail against the doc's own
+# mandate to keep them, so the negative checks below target the specific old
+# per-rule declarations (`color: #1a1a1a`, `background: #fff`, etc.), which
+# are what's actually gone now that every consuming rule reads a var(...).
+
+# Extracts one `selector {` rule's declarations by exact line match, so a
+# criterion about what one rule says is checked against that rule alone.
+css_rule() {
+  awk -v sel="$2 {" '
+    $0 == sel { inside = 1; next }
+    inside && /^}/ { exit }
+    inside { print }
+  ' "$1"
+}
+
+# Nth literal hex value assigned to a custom property (1 = the light
+# declaration under :root, 2 = the dark re-declaration), read from the
+# stylesheet itself rather than restated here.
+custom_prop_value() {
+  grep -oE -e "$1: #[0-9a-fA-F]{3,6}" css/style.css | sed -n "${2}p" \
+    | grep -oE '#[0-9a-fA-F]{3,6}'
+}
+
+check "@media (prefers-color-scheme: dark) block exists" \
+  grep -q '@media (prefers-color-scheme: dark)' css/style.css
+
+light_bg="$(custom_prop_value '--color-bg' 1)"
+dark_bg="$(custom_prop_value '--color-bg' 2)"
+light_text="$(custom_prop_value '--color-text' 1)"
+dark_text="$(custom_prop_value '--color-text' 2)"
+light_muted="$(custom_prop_value '--color-text-muted' 1)"
+dark_muted="$(custom_prop_value '--color-text-muted' 2)"
+light_surface="$(custom_prop_value '--color-surface' 1)"
+dark_surface="$(custom_prop_value '--color-surface' 2)"
+
+check "light --color-bg is the doc's #ffffff" test "$light_bg" = "#ffffff"
+check "light --color-text is the doc's #1a1a1a" test "$light_text" = "#1a1a1a"
+check "dark --color-bg is the doc's #121212" test "$dark_bg" = "#121212"
+check "dark --color-text is the doc's #e8e8e8" test "$dark_text" = "#e8e8e8"
+
+check "body's color reads the --color-text token" \
+  grep -q 'color: var(--color-text);' <(css_rule css/style.css body)
+check "body's background reads the --color-bg token" \
+  grep -q 'background: var(--color-bg);' <(css_rule css/style.css body)
+
+# The old flat, hardcoded declarations - as opposed to the values themselves,
+# see note above - no longer appear anywhere.
+check "no hardcoded 'color: #1a1a1a' declaration remains" \
+  not grep -q 'color: #1a1a1a' css/style.css
+check "no hardcoded 'background: #fff' declaration remains (light bg is now #ffffff via a token)" \
+  not grep -q 'background: #fff' css/style.css
+check "no hardcoded 'color: #595959' declaration remains" \
+  not grep -q 'color: #595959' css/style.css
+check "no hardcoded 'border-bottom: 1px solid #e0e0e0' declaration remains" \
+  not grep -q 'border-bottom: 1px solid #e0e0e0' css/style.css
+check "the 3-digit #fff shorthand is gone entirely (doc uses #ffffff)" \
+  not grep -Eq '#fff([^0-9a-fA-F]|$)' css/style.css
+
+check "light --color-surface differs from light --color-bg" \
+  test "$light_surface" != "$light_bg"
+check "dark --color-surface differs from dark --color-bg" \
+  test "$dark_surface" != "$dark_bg"
+check ".entry's background reads the --color-surface token" \
+  grep -q 'background: var(--color-surface);' <(css_rule css/style.css .entry)
+
+check "h1 uses the doc's 2rem/700/1.25 scale" \
+  grep -q 'font-size: 2rem;' <(css_rule css/style.css h1)
+check ".entry__title uses the doc's 1.25rem/700/1.3 scale" \
+  grep -q 'font-size: 1.25rem;' <(css_rule css/style.css .entry__title) \
+  && grep -q 'font-weight: 700;' <(css_rule css/style.css .entry__title) \
+  && grep -q 'line-height: 1.3;' <(css_rule css/style.css .entry__title)
+check ".entry__date uses the doc's 0.875rem/1.4 metadata scale" \
+  grep -q 'font-size: 0.875rem;' <(css_rule css/style.css .entry__date) \
+  && grep -q 'line-height: 1.4;' <(css_rule css/style.css .entry__date)
+check ".entry__date reads the --color-text-muted token" \
+  grep -q 'color: var(--color-text-muted);' <(css_rule css/style.css .entry__date)
+
+nav_current_rule="$(css_rule css/style.css '.nav__links a[aria-current="page"]')"
+check "current nav link keeps its bold weight" \
+  grep -q 'font-weight: 700;' <<< "$nav_current_rule"
+check "current nav link keeps its underline" \
+  grep -q 'text-decoration: underline;' <<< "$nav_current_rule"
+check "current nav link's distinguishing rule carries no colour property" \
+  not grep -q 'color' <<< "$nav_current_rule"
+
+# WCAG AA contrast (issue #79 AC3): computes relative luminance from the
+# literal hex values actually shipped in css/style.css - not the design
+# doc's stated ratios, which were never verified arithmetically - so a wrong
+# value here fails this check even though the doc named it.
+relative_luminance() {
+  awk -v hex="$1" '
+    function hex2dec(h,    n, i, c, v, result) {
+      result = 0
+      n = length(h)
+      for (i = 1; i <= n; i++) {
+        c = tolower(substr(h, i, 1))
+        if (c ~ /[0-9]/) { v = c + 0 } else { v = index("abcdefghijklmnopqrstuvwxyz", c) + 9 }
+        result = result * 16 + v
+      }
+      return result
+    }
+    function channel_lin(c,   cs) {
+      cs = c / 255
+      if (cs <= 0.03928) { return cs / 12.92 }
+      return exp(2.4 * log((cs + 0.055) / 1.055))
+    }
+    BEGIN {
+      gsub(/^#/, "", hex)
+      if (length(hex) == 3) {
+        hex = substr(hex,1,1) substr(hex,1,1) substr(hex,2,1) substr(hex,2,1) substr(hex,3,1) substr(hex,3,1)
+      }
+      r = hex2dec(substr(hex,1,2))
+      g = hex2dec(substr(hex,3,2))
+      b = hex2dec(substr(hex,5,2))
+      printf "%.10f", 0.2126*channel_lin(r) + 0.7152*channel_lin(g) + 0.0722*channel_lin(b)
+    }
+  '
+}
+
+contrast_ratio() {
+  local l1 l2
+  l1="$(relative_luminance "$1")"
+  l2="$(relative_luminance "$2")"
+  awk -v l1="$l1" -v l2="$l2" '
+    BEGIN {
+      lighter = (l1 > l2) ? l1 : l2
+      darker = (l1 > l2) ? l2 : l1
+      printf "%.4f", (lighter + 0.05) / (darker + 0.05)
+    }
+  '
+}
+
+meets_aa() {
+  awk -v r="$1" 'BEGIN { exit !(r + 0 >= 4.5) }'
+}
+
+light_body_ratio="$(contrast_ratio "$light_text" "$light_bg")"
+dark_body_ratio="$(contrast_ratio "$dark_text" "$dark_bg")"
+light_date_ratio="$(contrast_ratio "$light_muted" "$light_bg")"
+dark_date_ratio="$(contrast_ratio "$dark_muted" "$dark_bg")"
+
+check "light-scheme body text meets WCAG AA 4.5:1 (computed $light_body_ratio:1)" \
+  meets_aa "$light_body_ratio"
+check "dark-scheme body text meets WCAG AA 4.5:1 (computed $dark_body_ratio:1)" \
+  meets_aa "$dark_body_ratio"
+check "light-scheme entry date meets WCAG AA 4.5:1 (computed $light_date_ratio:1)" \
+  meets_aa "$light_date_ratio"
+check "dark-scheme entry date meets WCAG AA 4.5:1 (computed $dark_date_ratio:1)" \
+  meets_aa "$dark_date_ratio"
+
 # --- Jekyll build ---------------------------------------------------------
 # Proves the ADR 0001 mechanism actually works, not just that the config
 # file has the right shape. `jekyll build` fails loudly (non-zero exit) on
