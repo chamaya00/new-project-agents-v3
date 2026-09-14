@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # Structural checks for this repo's acceptance criteria, plus (from issue #17
-# onward) the real Jekyll build. No package manager, no test framework here,
-# so most of these are the grep / file-existence checks the criteria
-# themselves name, made runnable.
+# onward) the real Jekyll build. No test framework here, so most of these are
+# the grep / file-existence checks the criteria themselves name, made
+# runnable. Jekyll itself is a committed dependency as of issue #91 - see
+# `Gemfile` and ADR 0005 - built through Bundler rather than an ad hoc gem
+# install.
 # The mobile-viewport criterion has no scriptable check (per its own
 # acceptance criterion: "checked by a mobile-emulation pass in devtools")
 # and is out of scope for this script.
@@ -14,6 +16,13 @@
 # being invoked as a bare top-level command.
 set -u
 cd "$(dirname "$0")/.."
+
+# Every `bundle exec jekyll` call below, however deep a throwaway fixture's
+# own working directory, resolves against this Gemfile/Gemfile.lock and the
+# gems already vendored into vendor/bundle/ next to it - a fixture directory
+# never gets its own copy of either, so this is what lets `cd` into a
+# fixture and still run the pinned Jekyll.
+export BUNDLE_GEMFILE="$PWD/Gemfile"
 
 fail=0
 
@@ -56,6 +65,19 @@ check "ADR 0002 status is accepted" \
 check "ADR 0004 status is accepted" \
   grep -Eq '^Status:\s*accepted\s*$' \
     docs/decisions/0004-give-posts-a-stable-non-dated-permalink.md
+check "ADR 0005 status is accepted" \
+  grep -Eq '^Status:\s*accepted\s*$' \
+    docs/decisions/0005-pin-jekyll-with-a-committed-gemfile.md
+
+# --- Gemfile / Bundler (issue #91) ------------------------------------------
+check "Gemfile exists" test -f Gemfile
+check "Gemfile.lock exists" test -f Gemfile.lock
+check "Gemfile pins jekyll to the version docs/research/vercel-deploy.md names" \
+  grep -Eq '^\s*gem "jekyll", "~> 4\.4"\s*$' Gemfile
+check ".gitignore excludes .bundle/" grep -q '\.bundle/' .gitignore
+check ".gitignore excludes vendor/bundle/" grep -q 'vendor/bundle' .gitignore
+check "CLAUDE.md no longer says nothing is committed for Jekyll" \
+  not grep -q 'nothing is committed for it' CLAUDE.md
 
 check "projects.html exists at repo root" test -f projects.html
 check "posts.html exists at repo root" test -f posts.html
@@ -491,25 +513,26 @@ check "dark-scheme chip text-on-fill (hover) meets WCAG AA 4.5:1 (computed $dark
 # a YAML front-matter error, which is what the negative check below relies
 # on.
 #
-# Everything here builds with the plain `jekyll` gem. GitHub Pages does not:
-# it runs `github-pages`, a different gem with a dozen extra plugins. So a
-# green run below is evidence about this repository's own Liquid, not proof
-# that the site will deploy. ADR 0003 records how that gap took the site
-# down for nineteen hours, what closes it, and what is still open.
+# Everything here builds with the plain `jekyll` gem, pinned by the
+# committed `Gemfile` (ADR 0005) and run through `bundle exec` so the pinned
+# version is what actually runs, never whatever happens to already be on the
+# runner's PATH. GitHub Pages does not build this way: it runs
+# `github-pages`, a different gem with a dozen extra plugins. So a green run
+# below is evidence about this repository's own Liquid, not proof that the
+# site will deploy. ADR 0003 records how that gap took the site down for
+# nineteen hours, what closes it, and what is still open.
 
 ensure_jekyll() {
-  if command -v jekyll >/dev/null 2>&1; then
-    return 0
-  fi
   local user_gem_bin
   user_gem_bin="$(ruby -e 'print Gem.user_dir')/bin"
   export PATH="$user_gem_bin:$PATH"
-  if command -v jekyll >/dev/null 2>&1; then
-    return 0
+  if ! command -v bundle >/dev/null 2>&1; then
+    echo "bundle not found - installing (gem install bundler --user-install)..."
+    gem install bundler --user-install --no-document >/dev/null 2>&1
   fi
-  echo "jekyll not found - installing (gem install jekyll --user-install)..."
-  gem install jekyll --user-install --no-document >/dev/null 2>&1
-  command -v jekyll >/dev/null 2>&1
+  command -v bundle >/dev/null 2>&1 || return 1
+  bundle config set path 'vendor/bundle' >/dev/null 2>&1
+  bundle install >/dev/null 2>&1
 }
 
 
@@ -552,10 +575,10 @@ no_summary_for() {
 }
 
 if ensure_jekyll; then
-  echo "PASS: jekyll is available ($(jekyll --version))"
+  echo "PASS: jekyll is available ($(bundle exec jekyll --version))"
 
   check "jekyll build of the real site succeeds" \
-    jekyll build --destination _site
+    bundle exec jekyll build --destination _site
 
   # Sample posts (issue #56). Three real _posts files exist in this repo
   # now, so - unlike every fixture above - these checks read the real
@@ -730,7 +753,7 @@ title: "unterminated string
 ---
 <p>Broken on purpose.</p>
 FIXTURE
-  neg_output="$(cd "$neg_dir/site" && jekyll build --destination _site 2>&1)"
+  neg_output="$(cd "$neg_dir/site" && bundle exec jekyll build --destination _site 2>&1)"
   neg_status=$?
   if [ "$neg_status" -ne 0 ] && printf '%s' "$neg_output" | grep -q 'broken-front-matter.html'; then
     echo "PASS: invalid front matter fails the build and names the file"
@@ -753,7 +776,7 @@ date: 2026-01-01
 ---
 <p>Fixture content.</p>
 FIXTURE
-  (cd "$pos_dir/site" && jekyll build --destination _site --quiet)
+  (cd "$pos_dir/site" && bundle exec jekyll build --destination _site --quiet)
   check "a _projects file builds to _site/projects/<slug>/" \
     test -f "$pos_dir/site/_site/projects/fixture-project/index.html"
 
@@ -765,7 +788,7 @@ FIXTURE
 
   # Zero entries of either type: one line of static text, no list container.
   copy_site_into "$list_dir/empty"
-  (cd "$list_dir/empty" && jekyll build --destination _site --quiet)
+  (cd "$list_dir/empty" && bundle exec jekyll build --destination _site --quiet)
   check "zero projects renders the 'No projects yet.' line" \
     grep -q 'No projects yet\.' "$list_dir/empty/_site/projects.html"
   check "zero projects renders no list container" \
@@ -786,7 +809,7 @@ date: 2026-01-01
 ---
 <p>Fixture content.</p>
 FIXTURE
-  (cd "$list_dir/one-project" && jekyll build --destination _site --quiet)
+  (cd "$list_dir/one-project" && bundle exec jekyll build --destination _site --quiet)
   check "one _projects file appears on the Projects page by title" \
     grep -q 'Single fixture project' "$list_dir/one-project/_site/projects.html"
   check "one _projects file is linked from the Projects page" \
@@ -804,7 +827,7 @@ title: "Single fixture post"
 ---
 <p>Fixture content.</p>
 FIXTURE
-  (cd "$list_dir/one-post" && jekyll build --destination _site --quiet)
+  (cd "$list_dir/one-post" && bundle exec jekyll build --destination _site --quiet)
   check "one _posts file appears on the Posts page by title" \
     grep -q 'Single fixture post' "$list_dir/one-post/_site/posts.html"
   check "one _posts file is linked from the Posts page" \
@@ -832,7 +855,7 @@ date: 2026-06-01
 ---
 <p>Fixture content.</p>
 FIXTURE
-  (cd "$list_dir/two-projects" && jekyll build --destination _site --quiet)
+  (cd "$list_dir/two-projects" && bundle exec jekyll build --destination _site --quiet)
   order="$(grep -o 'Older fixture project\|Newer fixture project' \
     "$list_dir/two-projects/_site/projects.html" | tr '\n' ' ')"
   check "two projects render most-recent-first" \
@@ -869,7 +892,7 @@ title: "Home fixture post"
 ---
 <p>Fixture content.</p>
 FIXTURE
-  (cd "$home_dir/one-each" && jekyll build --destination _site --quiet)
+  (cd "$home_dir/one-each" && bundle exec jekyll build --destination _site --quiet)
   home_one_each="$home_dir/one-each/_site/index.html"
   check "one project appears under Home's 'Recent projects'" \
     grep -q 'Home fixture project' <(recent_section "$home_one_each" "Recent projects")
@@ -886,7 +909,7 @@ FIXTURE
   write_project "$home_dir/five-projects" "c.html" "Project three" "2026-03-01"
   write_project "$home_dir/five-projects" "d.html" "Project four" "2026-04-01"
   write_project "$home_dir/five-projects" "e.html" "Project five" "2026-05-01"
-  (cd "$home_dir/five-projects" && jekyll build --destination _site --quiet)
+  (cd "$home_dir/five-projects" && bundle exec jekyll build --destination _site --quiet)
   home_five="$home_dir/five-projects/_site/index.html"
   five_count="$(recent_section "$home_five" "Recent projects" | grep -c 'class="entry"')"
   check "five projects render exactly three entries on Home" \
@@ -907,7 +930,7 @@ title: "Only fixture post"
 ---
 <p>Fixture content.</p>
 FIXTURE
-  (cd "$home_dir/posts-only" && jekyll build --destination _site --quiet)
+  (cd "$home_dir/posts-only" && bundle exec jekyll build --destination _site --quiet)
   home_posts_only="$home_dir/posts-only/_site/index.html"
   check "zero projects removes Home's 'Recent projects' heading entirely" \
     not grep -q 'Recent projects' "$home_posts_only"
@@ -919,7 +942,7 @@ FIXTURE
   # The mirror image: zero posts, one project.
   copy_site_into "$home_dir/projects-only"
   write_project "$home_dir/projects-only" "only-project.html" "Only fixture project" "2026-01-01"
-  (cd "$home_dir/projects-only" && jekyll build --destination _site --quiet)
+  (cd "$home_dir/projects-only" && bundle exec jekyll build --destination _site --quiet)
   home_projects_only="$home_dir/projects-only/_site/index.html"
   check "zero posts removes Home's 'Recent posts' heading entirely" \
     not grep -q 'Recent posts' "$home_projects_only"
@@ -930,7 +953,7 @@ FIXTURE
 
   # Zero of both: no Recent area at all, and the fixed content above it intact.
   copy_site_into "$home_dir/empty"
-  (cd "$home_dir/empty" && jekyll build --destination _site --quiet)
+  (cd "$home_dir/empty" && bundle exec jekyll build --destination _site --quiet)
   home_empty="$home_dir/empty/_site/index.html"
   check "zero projects and zero posts leaves Home with no Recent headings" \
     not grep -Eq 'Recent projects|Recent posts' "$home_empty"
@@ -974,7 +997,7 @@ title: "Based fixture post"
 <p>Fixture content.</p>
 FIXTURE
   echo 'baseurl: /base-fixture' >> "$home_dir/baseurl/_config.yml"
-  (cd "$home_dir/baseurl" && jekyll build --destination _site --quiet)
+  (cd "$home_dir/baseurl" && bundle exec jekyll build --destination _site --quiet)
   home_baseurl="$home_dir/baseurl/_site/index.html"
   unbased="$(grep -oE '(href|src)="/[^"]*' "$home_baseurl" \
     | grep -vE '^(href|src)="/base-fixture/' || true)"
@@ -1067,7 +1090,7 @@ tags: [ghost]
 <p>Fixture content.</p>
 FIXTURE
 
-  (cd "$tag_dir/site" && jekyll build --destination _site --quiet)
+  (cd "$tag_dir/site" && bundle exec jekyll build --destination _site --quiet)
 
   design_page="$tag_dir/site/_site/tags/design/index.html"
   unused_page="$tag_dir/site/_site/tags/unused/index.html"
@@ -1104,7 +1127,7 @@ tags: [design, travel]
 ---
 <p>Fixture content.</p>
 FIXTURE
-  (cd "$list_dir/tagged" && jekyll build --destination _site --quiet)
+  (cd "$list_dir/tagged" && bundle exec jekyll build --destination _site --quiet)
   tagged_page="$list_dir/tagged/_site/projects.html"
   check "an entry's 'design' tag links to that tag's generated page" \
     grep -Eq 'href="[^"]*/tags/design/">design</a>' "$tagged_page"
@@ -1120,7 +1143,7 @@ date: 2026-01-01
 ---
 <p>Fixture content.</p>
 FIXTURE
-  (cd "$list_dir/no-tags-key" && jekyll build --destination _site --quiet)
+  (cd "$list_dir/no-tags-key" && bundle exec jekyll build --destination _site --quiet)
   check "an entry with no tags key renders no tag container" \
     not grep -q 'entry__tags' "$list_dir/no-tags-key/_site/projects.html"
 
@@ -1134,7 +1157,7 @@ tags: []
 ---
 <p>Fixture content.</p>
 FIXTURE
-  (cd "$list_dir/empty-tags-list" && jekyll build --destination _site --quiet)
+  (cd "$list_dir/empty-tags-list" && bundle exec jekyll build --destination _site --quiet)
   check "an entry with an empty tags list renders no tag container" \
     not grep -q 'entry__tags' "$list_dir/empty-tags-list/_site/projects.html"
 
@@ -1155,7 +1178,7 @@ tags: [design]
 ---
 <p>Fixture content.</p>
 FIXTURE
-  (cd "$list_dir/tagged-post" && jekyll build --destination _site --quiet)
+  (cd "$list_dir/tagged-post" && bundle exec jekyll build --destination _site --quiet)
   tagged_post_page="$list_dir/tagged-post/_site/posts.html"
 
   check "the chip class renders on Home" \
@@ -1184,7 +1207,7 @@ FIXTURE
   rm -rf "$neg_dir" "$pos_dir" "$list_dir" "$home_dir" "$tag_dir"
   trap - EXIT
 else
-  echo "FAIL: jekyll is available (gem install jekyll failed - check network access / Ruby gem environment)"
+  echo "FAIL: jekyll is available (bundle install failed - check network access / Ruby gem environment)"
   fail=1
 fi
 
