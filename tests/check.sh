@@ -570,6 +570,14 @@ if ensure_jekyll; then
   check "Home's Recent posts lists the same three, most-recent-first" \
     test "$home_recent_posts_order" = "Writing HTML by hand again A week with Jekyll Static by choice "
 
+  home_recent_tag_ok() {
+    recent_section _site/index.html "$1" | grep -Eq "href=\"[^\"]*/tags/$2/\">$2</a>"
+  }
+  check "Home's Recent posts shows 'Writing HTML by hand again's html tag chip" \
+    home_recent_tag_ok "Recent posts" html
+  check "Home's Recent projects shows 'linkrot's cli tag chip" \
+    home_recent_tag_ok "Recent projects" cli
+
   check "'Writing HTML by hand again' links to a page that exists in the built output" \
     test -f _site/posts/writing-html-by-hand-again/index.html
   check "'A week with Jekyll' links to a page that exists in the built output" \
@@ -596,8 +604,8 @@ if ensure_jekyll; then
   check "'A week with Jekyll', which has no summary field, shows no summary line" \
     no_summary_for _site/posts.html "A week with Jekyll"
 
-  check "no sample post declares a tags key" \
-    not grep -rEl '^\s*tags\s*:' _posts/
+  check "'Writing HTML by hand again' shows its 'html' tag chip on posts.html" \
+    grep -Eq 'href="[^"]*/tags/html/">html</a>' _site/posts.html
 
   # Sample projects (issue #57). Two real _projects files exist in this repo
   # now, so - like the sample posts above - these checks read the real
@@ -624,8 +632,26 @@ if ensure_jekyll; then
   check "'A pomodoro timer for the terminal', which has no summary field, shows no summary line" \
     no_summary_for _site/projects.html "A pomodoro timer for the terminal"
 
-  check "no sample project declares a tags key" \
-    not grep -rEl '^\s*tags\s*:' _projects/
+  check "'linkrot' shows its 'cli' tag chip on projects.html" \
+    grep -Eq 'href="[^"]*/tags/cli/">cli</a>' _site/projects.html
+  check "'linkrot' shows its 'go' tag chip on projects.html" \
+    grep -Eq 'href="[^"]*/tags/go/">go</a>' _site/projects.html
+
+  # A real tag's own generated page (issue #87): built from the same _tags/
+  # stub and where_exp mechanism the fixtures above exercise, but proven here
+  # against the real content and the real build, not a throwaway copy.
+  check "'/tags/html/' page exists in the built output" \
+    test -f _site/tags/html/index.html
+  check "'/tags/html/' page lists 'Writing HTML by hand again'" \
+    grep -q '>Writing HTML by hand again<' _site/tags/html/index.html
+  check "'/tags/cli/' page exists in the built output" \
+    test -f _site/tags/cli/index.html
+  check "'/tags/cli/' page lists 'linkrot'" \
+    grep -q '>linkrot<' _site/tags/cli/index.html
+  check "'/tags/go/' page exists in the built output" \
+    test -f _site/tags/go/index.html
+  check "'/tags/go/' page lists 'linkrot'" \
+    grep -q '>linkrot<' _site/tags/go/index.html
 
   # Entry pages (issue #69). Every _posts/_projects file now declares
   # `layout: entry`, so the real build already produces one sample post's
@@ -653,6 +679,13 @@ if ensure_jekyll; then
     grep -q '<h1>linkrot</h1>' "$real_project_entry"
   check "the sample project's own page shows its readable date" \
     grep -q '10 May 2026' "$real_project_entry"
+
+  check "the sample post's own page shows its 'html' tag chip" \
+    grep -Eq 'href="[^"]*/tags/html/">html</a>' "$real_post_entry"
+  check "the sample project's own page shows its 'cli' tag chip" \
+    grep -Eq 'href="[^"]*/tags/cli/">cli</a>' "$real_project_entry"
+  check "the sample project's own page shows its 'go' tag chip" \
+    grep -Eq 'href="[^"]*/tags/go/">go</a>' "$real_project_entry"
 
   check "the sample post's own page's nav marks Posts as current" \
     grep -q 'href="[^"]*/posts.html" aria-current="page"' "$real_post_entry"
