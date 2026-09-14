@@ -24,6 +24,11 @@ cd "$(dirname "$0")/.."
 # fixture and still run the pinned Jekyll.
 export BUNDLE_GEMFILE="$PWD/Gemfile"
 
+# The one invocation this script treats as canonical: the real build below
+# runs it, and the vercel.json check greps for this exact string, so
+# vercel.json and the gate cannot silently drift apart (issue #92).
+JEKYLL_BUILD_INVOCATION="bundle exec jekyll build --destination _site"
+
 fail=0
 
 check() {
@@ -102,6 +107,18 @@ check ".gitignore excludes .bundle/" grep -q '\.bundle/' .gitignore
 check ".gitignore excludes vendor/bundle/" grep -q 'vendor/bundle' .gitignore
 check "CLAUDE.md no longer says nothing is committed for Jekyll" \
   not grep -q 'nothing is committed for it' CLAUDE.md
+
+# --- vercel.json (issue #92) -----------------------------------------------
+# Vercel's own Jekyll framework detector would build this repo zero-config
+# (see docs/research/vercel-deploy.md), but a committed vercel.json pins the
+# build command explicitly so it can never silently drift from the exact
+# invocation this script proves in CI - the two are compared against the
+# same variable below rather than two copies of the same string.
+check "vercel.json exists" test -f vercel.json
+check "vercel.json's buildCommand matches this script's own jekyll build invocation" \
+  grep -Fq "\"buildCommand\": \"$JEKYLL_BUILD_INVOCATION\"" vercel.json
+check "vercel.json's outputDirectory is _site" \
+  grep -Fq '"outputDirectory": "_site"' vercel.json
 
 check "projects.html exists at repo root" test -f projects.html
 check "posts.html exists at repo root" test -f posts.html
@@ -601,8 +618,10 @@ no_summary_for() {
 if ensure_jekyll; then
   echo "PASS: jekyll is available ($(bundle exec jekyll --version))"
 
+  # shellcheck disable=SC2086  # word-splitting is the point: turns the
+  # canonical invocation string above into check()'s argv.
   check "jekyll build of the real site succeeds" \
-    bundle exec jekyll build --destination _site
+    $JEKYLL_BUILD_INVOCATION
 
   # Sample posts (issue #56). Three real _posts files exist in this repo
   # now, so - unlike every fixture above - these checks read the real
