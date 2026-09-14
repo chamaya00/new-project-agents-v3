@@ -22,9 +22,11 @@ Jekyll's `relative_url`/`site.baseurl` instead, per ADR 0001.
 
 ## Commands
 
-- Install: not applicable - no package manager, nothing to install. The gate
-  installs its own Jekyll gem on demand (see Test, below); nothing is
-  committed for it (no Gemfile).
+- Install: `bundle install` - `Gemfile`/`Gemfile.lock` pin `jekyll` (see ADR
+  0005), so this is the one thing here with a real install step. The gate runs
+  it itself on demand (see Test, below), vendored into `vendor/bundle/` rather
+  than the system Ruby, so nothing here needs root or a pre-provisioned
+  writable gem path.
 - Dev: `python3 -m http.server` still works for `about.html`, the one page
   left that is pure hand-authored HTML, but no longer renders
   collection-driven pages correctly - it skips Jekyll's build entirely. Home
@@ -38,12 +40,14 @@ Jekyll's `relative_url`/`site.baseurl` instead, per ADR 0001.
   than a separate step this repo runs on its own.
 - Test: `bash tests/check.sh` - structural checks (file existence, relative
   links, no tracking/form code) for each acceptance criterion that can be
-  scripted, plus the Jekyll build itself: installs the `jekyll` gem if it
-  isn't already on the runner, builds the real site, and builds two throwaway
-  fixtures to prove the collection mechanism (a valid one lands under
-  `_site/projects/<slug>/`, an invalid one fails the build and names the
-  file). Viewport/visual criteria are checked manually with devtools mobile
-  emulation, per the issue that added the page being checked.
+  scripted, plus the Jekyll build itself: runs `bundle install` (vendored into
+  `vendor/bundle/`) against the committed `Gemfile`/`Gemfile.lock` if Jekyll
+  isn't already on the runner, then builds the real site and two throwaway
+  fixtures through `bundle exec jekyll` - never a bare `jekyll` - to prove the
+  collection mechanism (a valid one lands under `_site/projects/<slug>/`, an
+  invalid one fails the build and names the file). Viewport/visual criteria
+  are checked manually with devtools mobile emulation, per the issue that
+  added the page being checked.
 
 There is one check above, `bash tests/check.sh` - typecheck and lint don't
 apply to hand-authored HTML/CSS, and the only build is the Jekyll one that
