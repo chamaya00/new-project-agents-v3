@@ -1,5 +1,29 @@
 # GitHub Pages subpath and no-build constraints
 
+## Superseded
+
+This repository is now hosted on **Vercel**, serving the site at a **domain
+root**, not as a GitHub Pages project site at a `/<repository-name>/`
+subpath. The Base path section below, and the parts of the Link strategy and
+Recommendation sections that depend on it, describe a hosting setup this
+repository no longer uses. They are left in place rather than rewritten,
+because the reasoning was correct for GitHub Pages and may matter again if
+that changes.
+
+The Link strategy conclusion - relative links, with no leading slash - still
+holds, but the reason changes. Under a subpath, a root-absolute link
+(`/style.css`) broke because it resolved against the domain root, skipping
+past the `/<repository-name>/` prefix entirely. A domain root has no such
+prefix to skip past, so that specific failure mode is gone. It is not,
+however, a reason to switch to root-absolute links: they would still fail to
+account for pages nested below the site root the same way they always did
+(a root-absolute link from `about/index.html` still points at the domain
+root, not at `about/`'s own directory), and relative links keep resolving
+correctly regardless of nesting depth either way. So the convention -
+relative, no leading slash - is unchanged, for the reason already given in
+the Link strategy section below plus this one: there is no prefix left for
+either style of link to get wrong.
+
 Decision this research serves: what base path, Jekyll setting, and link style let the designer and engineer ship a static portfolio site (issue #2) that works when GitHub Pages serves it from a project-site subpath with no build step.
 
 ## Base path

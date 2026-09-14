@@ -43,6 +43,13 @@ GitHub-hosted, not repo-maintained, build machinery. This ADR moves to
 `accepted` in the same diff that actually commits `_config.yml` and removes
 `.nojekyll`.
 
+**Note (added by issue #93):** "No change to the repo's Pages publishing
+source" and "GitHub-hosted... build machinery" above named GitHub Pages
+specifically, and CLAUDE.md's Stack section no longer describes this
+repository as hosted there. The collection mechanism this ADR decided -
+Jekyll, `_config.yml`, the two collections - is unaffected by that; only
+which infrastructure runs the same Jekyll build has changed.
+
 ## Alternatives rejected
 
 - **A bespoke generator script run by a custom GitHub Actions build-and-deploy
