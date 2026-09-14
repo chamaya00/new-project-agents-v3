@@ -35,6 +35,30 @@ not() {
   ! "$@"
 }
 
+# --- Hosting docs describe Vercel/domain-root, not GitHub Pages/subpath
+# (issue #93) --------------------------------------------------------------
+# Scoped to just the hosting sentence, not the whole file: CLAUDE.md's Stack
+# section still names GitHub Pages further down, describing the Jekyll build
+# itself (out of scope for #93, independent of the Gemfile/vercel.json work).
+stack_hosting_sentence="$(awk '/^## Stack$/{flag=1; next} /^## / && flag {exit} flag' CLAUDE.md \
+  | tr '\n' ' ' | grep -oE 'Hosted on [^.]*\.')"
+check "CLAUDE.md's hosting sentence names Vercel" \
+  grep -q 'Vercel' <<< "$stack_hosting_sentence"
+check "CLAUDE.md's hosting sentence does not name GitHub Pages" \
+  not grep -q 'GitHub Pages' <<< "$stack_hosting_sentence"
+
+check "pages-subpath.md carries a Superseded heading" \
+  grep -q '^## Superseded$' docs/research/pages-subpath.md
+check "pages-subpath.md's Superseded note names Vercel and a domain root" \
+  grep -q 'Vercel' docs/research/pages-subpath.md \
+  && grep -q 'domain root' docs/research/pages-subpath.md
+check "pages-subpath.md keeps its original Base path reasoning intact" \
+  grep -Fq 'Base path = `/<repository-name>/`' docs/research/pages-subpath.md
+
+check "ADR 0001 notes its GitHub-Pages-specific consequences no longer hold" \
+  grep -q 'added by issue #93' \
+    docs/decisions/0001-enable-jekyll-for-content-listings.md
+
 check "index.html exists at repo root" test -f index.html
 check "about.html exists at repo root" test -f about.html
 check ".nojekyll is absent (Jekyll processing is on)" not test -f .nojekyll

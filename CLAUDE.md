@@ -8,8 +8,9 @@ and agent runs end to end.
 ## Stack
 
 Static HTML5 + CSS3, no JavaScript, no framework, no package manager. Hosted
-on GitHub Pages as a project site (served at `/<repository-name>/`, per
-`docs/research/pages-subpath.md`). Content files are still hand-authored
+on Vercel, served at a domain root; see `docs/research/pages-subpath.md`'s
+superseding note for why the existing relative, no-leading-slash link
+convention still holds there too. Content files are still hand-authored
 HTML5. Jekyll is enabled (`.nojekyll` removed, `_config.yml` added, per
 `docs/decisions/0001-enable-jekyll-for-content-listings.md`) to turn the
 `_posts` and `_projects` collections into generated listing pages - this is
