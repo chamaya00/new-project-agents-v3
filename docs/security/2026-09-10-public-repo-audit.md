@@ -83,14 +83,18 @@ guard - all of which act on the *diff*, not on the running process.
 
 ### 3. Reusable workflows pinned to a movable tag - MEDIUM-HIGH, fixed
 
-All four callers referenced `@v1.18.0`. A git tag is a movable pointer:
+All four callers referenced a tag - `@v1.18.0` when this was written,
+`@v1.24.0` by the time it merged. A git tag is a movable pointer:
 repointing it changes what executes here - with the OAuth token and the
 App private key - and no diff lands in this repository for anyone to
 read. Now pinned to the commit SHA with the release kept as a trailing
 comment, and `tests/check.sh` fails the build if any caller drifts back
 to a tag or loses its release comment.
 
-`/update-agents` must now rewrite both halves together.
+`/update-agents` must now rewrite both halves together. Recorded as
+ADR 0006, because it sets a standing convention rather than a one-off
+edit: the check forbids a tag here from now on, including the moving
+`@v1` major the factory's README offers.
 
 ### 4. A stranger could reach the preflight's write path - LOW-MEDIUM, fixed
 

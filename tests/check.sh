@@ -1255,7 +1255,8 @@ else
 fi
 
 # --- Supply chain: reusable workflows are pinned by commit SHA --------------
-# Added by the security review in docs/security/2026-09-10-public-repo-audit.md.
+# Added by the security review in docs/security/2026-09-10-public-repo-audit.md
+# (finding 3). The decision itself is ADR 0006.
 #
 # Every workflow here is a thin caller into chamaya00/agent-factory, and
 # agent-run.yml hands that workflow CLAUDE_CODE_OAUTH_TOKEN and the App
