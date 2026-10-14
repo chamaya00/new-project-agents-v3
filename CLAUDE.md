@@ -8,8 +8,9 @@ and agent runs end to end.
 ## Stack
 
 Static HTML5 + CSS3, no JavaScript, no framework, no package manager. Hosted
-on GitHub Pages as a project site (served at `/<repository-name>/`, per
-`docs/research/pages-subpath.md`). Content files are still hand-authored
+on Vercel, served at a domain root; see `docs/research/pages-subpath.md`'s
+superseding note for why the existing relative, no-leading-slash link
+convention still holds there too. Content files are still hand-authored
 HTML5. Jekyll is enabled (`.nojekyll` removed, `_config.yml` added, per
 `docs/decisions/0001-enable-jekyll-for-content-listings.md`) to turn the
 `_posts` and `_projects` collections into generated listing pages - this is
@@ -21,9 +22,11 @@ Jekyll's `relative_url`/`site.baseurl` instead, per ADR 0001.
 
 ## Commands
 
-- Install: not applicable - no package manager, nothing to install. The gate
-  installs its own Jekyll gem on demand (see Test, below); nothing is
-  committed for it (no Gemfile).
+- Install: `bundle install` - `Gemfile`/`Gemfile.lock` pin `jekyll` (see ADR
+  0005), so this is the one thing here with a real install step. The gate runs
+  it itself on demand (see Test, below), vendored into `vendor/bundle/` rather
+  than the system Ruby, so nothing here needs root or a pre-provisioned
+  writable gem path.
 - Dev: `python3 -m http.server` still works for `about.html`, the one page
   left that is pure hand-authored HTML, but no longer renders
   collection-driven pages correctly - it skips Jekyll's build entirely. Home
@@ -37,12 +40,14 @@ Jekyll's `relative_url`/`site.baseurl` instead, per ADR 0001.
   than a separate step this repo runs on its own.
 - Test: `bash tests/check.sh` - structural checks (file existence, relative
   links, no tracking/form code) for each acceptance criterion that can be
-  scripted, plus the Jekyll build itself: installs the `jekyll` gem if it
-  isn't already on the runner, builds the real site, and builds two throwaway
-  fixtures to prove the collection mechanism (a valid one lands under
-  `_site/projects/<slug>/`, an invalid one fails the build and names the
-  file). Viewport/visual criteria are checked manually with devtools mobile
-  emulation, per the issue that added the page being checked.
+  scripted, plus the Jekyll build itself: runs `bundle install` (vendored into
+  `vendor/bundle/`) against the committed `Gemfile`/`Gemfile.lock` if Jekyll
+  isn't already on the runner, then builds the real site and two throwaway
+  fixtures through `bundle exec jekyll` - never a bare `jekyll` - to prove the
+  collection mechanism (a valid one lands under `_site/projects/<slug>/`, an
+  invalid one fails the build and names the file). Viewport/visual criteria
+  are checked manually with devtools mobile emulation, per the issue that
+  added the page being checked.
 
 There is one check above, `bash tests/check.sh` - typecheck and lint don't
 apply to hand-authored HTML/CSS, and the only build is the Jekyll one that
@@ -57,54 +62,112 @@ rename it in `.github/workflows/ci.yml` in the same commit, and re-point the
 branch protection rule in the same sitting, or the gate silently stops checking
 that thing.
 
-## How work moves
+## What is different here
 
-Objectives become issues labelled `objective`. A human labels the objective
-`agent:queued`; nothing else needs labelling by hand. The orchestrator splits it
-into 2-5 child issues, each with acceptance criteria and one role label, and
-queues them itself as each becomes ready.
+This section sits outside the managed block below on purpose: it is what this
+repository knows about the shared process that the shared process does not know
+about itself. Nothing in an update overwrites it.
 
-It stays with the objective after the split. A child reaching `agent:review` or
-`agent:blocked` wakes it: it reads the state of every child, queues whatever the
-merge just unblocked, rewrites and re-queues a child that blocked on its own
-scoping, and replaces the status picture on the parent issue. The parent issue
-is the whole surface - read that, and the orchestrator comes to you when a
-decision is genuinely yours.
+**Every role opens a pull request for its own work here, the researcher and the
+designer included.** `.claude/agents/researcher.md` and
+`.claude/agents/designer.md` both carry `mcp__github__create_pull_request` and
+both instruct opening one as the deliverable. So the usual gap between a child
+finishing and its dependants becoming ready is an open pull request nobody has
+merged, not a branch nobody opened one for.
 
-Ready means the issues a child depends on are merged to `main`, not merely
-labelled `agent:review`. The researcher and the designer cannot open pull
-requests, so their work can be complete, labelled `agent:review`, and still
-absent from the branch the next agent reads. Checking that is the orchestrator's
-job before it queues anything.
+This paragraph used to say the block below contradicted it. As of v1.24.0 it
+does not - the block stopped naming which roles open pull requests and now
+defers to the role files, which is where the answer actually lives. The note
+stays because the answer is still worth having in one place when you are
+reading this file to find out how work moves here.
 
-Merging is still yours, and the orchestrator cannot break a child down further -
-that comes back as `needs-decomposition` and a comment on the parent.
+`agent:review` still means only that a run finished, never that anything landed,
+and a run that ended on its turn cap can have pushed a branch before it got that
+far. Telling those two apart is the orchestrator's job before it queues
+anything, and it says which one it is looking at - "waiting on a merge" sends
+you to a page with nothing on it when no pull request exists.
 
-**This needs the agent App configured.** Events raised by the default Actions
+**The agent App has to be configured.** Events raised by the default Actions
 token do not start workflow runs, so without `AGENT_APP_ID` and
 `AGENT_APP_PRIVATE_KEY` every label the orchestrator applies raises nothing: the
 objective decomposes and then stops, silently, with correctly labelled children
 that never run. Without the App, queue each child by hand - the older flow.
 
+**`needs-human` may not exist as a label yet.** It arrived with factory v1.21.0
+and marks an objective waiting on a person rather than on a run. The labels are
+created by the `bootstrap` workflow, so it does not exist here until that is
+re-run by hand from the Actions tab - and the orchestrator is already instructed
+to apply it.
+
+<!-- agent-factory:begin -->
+<!-- Everything from here to the agent-factory:end marker describes the shared
+     process rather than this project, and /update-agents replaces the whole
+     block when this repository moves to a new factory release. An edit inside
+     it is lost on the next update: put anything specific to this repository
+     outside the block, where nothing will overwrite it. -->
+
+## How work moves
+
+Objectives become issues labelled `objective`. A human labels the objective
+`agent:queued`; nothing else needs labelling by hand. The orchestrator splits it
+into 2-5 child issues, each with acceptance criteria and one role label, and
+then queues them itself as each one becomes ready.
+
+It stays with the objective after the split. A child reaching `agent:review` or
+`agent:blocked` wakes it: it reads the state of every child, queues whatever the
+merge has just unblocked, rewrites and re-queues a child that blocked on its own
+scoping, and replaces the status picture on the parent issue. The parent issue
+is the whole surface - a human reads that and nothing else, and hears from the
+orchestrator when a decision is genuinely theirs.
+
+Ready means the issues a child depends on are merged to the default branch, not
+merely finished and labelled `agent:review`. An agent reads the default branch,
+so work that is finished but unmerged is invisible to the child that depends on
+it. Which roles open a pull request for their own work is not restated here -
+each role file says what that role does, and a summary of it in this file could
+only drift. A run started too early refuses, correctly, and still spends one of
+that issue's three attempts. That check is now the orchestrator's to make before
+it queues anything.
+
+The human still decides what merges. The orchestrator queues work and reports on
+it; it does not merge a pull request, and it cannot break a child down further -
+that comes back as `needs-decomposition` and a comment on the parent.
+
 Labels: `objective`, `agent:queued`, `agent:running`, `agent:review`,
-`agent:blocked`, `needs-decomposition`, `role:researcher`, `role:designer`,
-`role:engineer`.
+`agent:blocked`, `needs-decomposition`, `needs-human`, `role:researcher`,
+`role:designer`, `role:engineer`.
 
-## Standing rules
+## Driving an objective
 
-Acceptance criteria before work starts. Tests before merge. An ADR in
-`docs/decisions/` for any schema or dependency change, in the same diff.
+A session that files an objective, or is pointed at one, is that objective's
+driver and the person's window into it. Nobody else is watching. Filing one is
+`/objective`, which refines the idea, sets the merge policy, queues it, and
+hands back to the session to drive.
 
-Three failed attempts on one issue means the issue was scoped wrong. Stop and
-ask for decomposition rather than trying a fourth time.
+**Read `.claude/skills/driving-an-objective/` whenever an objective is in play**
+- what to do with its merge policy, how to report, how to put a blocker so it
+can be answered, and what only the person can decide. This paragraph exists to
+say the role is yours; the skill says how to hold it.
 
-Never edit `.github/workflows/`, `CODEOWNERS`, or anything under a plugin
-directory. If the work seems to need it, say so in a comment and stop.
+## The rules
 
-## Memory
+Not restated here. Two sections used to summarise them and every line had a
+fuller source a click away, so the summaries could only ever drift out of
+agreement with the thing they summarised - which is worse than not having them,
+because a reader who finds a rule here stops looking for the real one.
 
-Lessons specific to this repository live in `.claude/memory/<role>.md`, one file
-per role, 40 lines each. They are proposed in a pull request, never written
-silently. A lesson that has graduated into a test, a lint rule, or a type gets
-deleted - the check enforces it now, and the sentence is competing for attention
-with the lessons nothing enforces yet.
+- `.claude/skills/house-rules/` - what must be true before work starts and
+  before anything merges, who may merge, the three-strike rule, and what no
+  agent may touch.
+- `.claude/skills/memory-protocol/` - how this repository's lessons are stored,
+  capped, proposed, and retired.
+- `.claude/skills/acceptance-criteria/` - what a criterion has to look like to
+  gate anything.
+- `.claude/skills/driving-an-objective/` - what the session in front of a person
+  does once an objective is running.
+
+Every agent run is told to follow the first three by name. The fourth is for the
+session driving, which is why the section above names it rather than leaving it
+to be discovered.
+
+<!-- agent-factory:end -->

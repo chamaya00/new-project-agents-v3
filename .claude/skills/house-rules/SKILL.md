@@ -19,6 +19,10 @@ Tests before merge. Every acceptance criterion has a test that would fail if the
 
 **Watch each new check fail before you trust it passing.** Break the thing it guards, see it go red, put the thing back. A check that has only ever been green is not evidence; it is a check that has never been tested, and the two are indistinguishable from the outside. This applies to the test harness as much as to the code - a fixture that silently stops working turns its negative cases green for the wrong reason, and those are the cases nobody re-reads.
 
+**And read what the sabotage actually printed, not what your harness said about it.** The run that proves a check has teeth can itself be broken, and it breaks quietly: a patch string the shell expanded before the patcher saw it, a pattern matched against output that indents differently, a substitution that found nothing and reported nothing. Every one of those prints a clean verdict about a check it never exercised. Twice in one sitting a sabotage sweep here reported that nothing was caught, and both times the checks were working and the sweep was not.
+
+The tell is that a broken harness looks exactly like diligence - a tidy table of results, produced by a program that did nothing. So on any sweep, open one case's real output and confirm the failure says what you expect. One is enough; the failure modes are shared across the sweep, so the one you read vouches for the others.
+
 The checks are the gate, and the gate is deterministic. Never skip, disable, or quarantine a test to get to green, and never widen a pull request to get around a failing check.
 
 A pull request changes one issue's worth of code. Things noticed along the way become issues, not commits.
@@ -33,6 +37,23 @@ Do not confuse being unwatched with being self-directed. What must not happen is
 
 The difference an absent owner does make is that you cannot ask them anything. So anything that would have been a question becomes a pull request left open with the question written on it. That is a better outcome than a guess, and it is waiting for them when they come back.
 
+**Where the instruction lives, once they have gone.** "That decision holds while the session that received it is working" was costing the thing it was trying to protect: the decision was durable and only its storage was not, so a person had to give it again to every new session. An objective may therefore carry the decision itself, in its body:
+
+```
+Merge policy: green (set by @owner, 2026-01-01)
+```
+
+Absent means ask, so nothing changes for an objective that does not carry it. `green` means a driver applies this whole gate to that objective's children without a person present - the review is not weakened, it is just no longer gated on someone being awake. It is scoped to one objective's children, never a repository-wide setting, and revoked by editing the issue.
+
+Two limits, and the mechanism is worthless without both:
+
+- **A run may not write it or act on it.** Roles inside the repository authenticate as the agent identity; a driver authenticates as the person. Honour the line only when the objective body was last edited by an account that is not that identity, and refuse it otherwise. A role writing its own merge authority is the loop closing on itself wearing a record that looks like consent.
+- **A driver writes it only when a person answers.** This one has no mechanism behind it and should not pretend to: a driver holding a person's credentials is indistinguishable from that person. What makes it a different risk from an unattended run is structural - a driver is mid-conversation with someone, and a run is not.
+
+A policy authorises merging and nothing else. It never covers the six below, and it never decides what to do about failure: a child that blocks a second time goes to a person, while its siblings keep merging.
+
+**And be more sceptical of green where the person cannot read the diff.** A standing policy usually means they are trusting the gate rather than the change, which makes the gate the only thing left between a bad merge and whatever ships. A check that has only ever passed is indistinguishable from one that cannot fail, so confirm the new ones have teeth before merging on them.
+
 Before merging on someone's behalf, all of these hold. Any one failing is a reason to say so rather than merge:
 
 - **Every acceptance criterion is covered by a check that actually ran.** A criterion marked verified by a check that never executed is the worst case here, because it ends the review - a reader who sees it ticked does not check it again.
@@ -43,6 +64,12 @@ Before merging on someone's behalf, all of these hold. Any one failing is a reas
 - **Nothing in the diff needs a decision only the owner can make.** Product behaviour, naming that will outlive the issue, a trade-off with no obviously right answer: those get asked, not merged.
 
 Say which of these you checked. "Merged, green" is not a review; it is a status.
+
+**A merge is not finished when the pull request closes.** Every check in that list is scoped to the pull request, and a pull request's checks stop being true the moment it merges - they ran on a commit that no longer exists anywhere except in the merge. What runs afterwards is what decides whether the work reached anyone: a deployment, a publish, a post-merge suite. Watch the merge commit until that settles, and say what it did.
+
+Where it cannot be watched to the end - a pipeline measured in hours, an environment that promotes on its own schedule - say what you expect and where the answer will appear, and look at the next time you touch the repository. The point is that somebody is carrying the question, not that it is answered inside the minute.
+
+A project once ran nineteen hours and eight merges on a failing deployment, serving a build from before any of them, while every pull request in that window was honestly green. Nobody was wrong about anything they checked. Nobody had checked the thing that mattered.
 
 ### What a revert does not undo
 

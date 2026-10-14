@@ -7,7 +7,7 @@ name: ci
 # nothing here on its own. `/update-agents` proposes the bump as a pull
 # request, so the diff gets read here before it runs here.
 #
-# The ref is a commit SHA, not the `v1.18.0` tag it used to be, with the tag
+# The ref is a commit SHA, not the `v1.24.0` tag it used to be, with the tag
 # kept alongside it as a comment so a reader can still see which release this
 # is. A tag is a movable pointer: anyone able to push a tag in the factory can
 # change what runs here, and this caller hands that workflow the OAuth token
@@ -55,7 +55,7 @@ on:
 
 jobs:
   ci:
-    uses: chamaya00/agent-factory/.github/workflows/ci.yml@13948257a2f59f0ac00bac54a7d345efc1edd817 # v1.18.0
+    uses: chamaya00/agent-factory/.github/workflows/ci.yml@3151094081a7059a4f469b2742fccc57530197aa # v1.24.0
     with:
       check-name: 'static-site'
       commands: |

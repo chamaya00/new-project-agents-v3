@@ -28,3 +28,12 @@
 # already refuses these from a non-maintainer; this makes the same rule hold
 # at review time rather than only in CI.
 /.claude/            @chamaya00
+
+# Build inputs, added on the 2026-10-14 revisit. `tests/check.sh` and
+# `vercel.json` both run `bundle install`, which executes whatever the Gemfile
+# names - a git source, a native extension's build step. Same reasoning as
+# /tests/ above: a file an agent run can write and something else then
+# executes.
+/Gemfile             @chamaya00
+/Gemfile.lock        @chamaya00
+/vercel.json         @chamaya00

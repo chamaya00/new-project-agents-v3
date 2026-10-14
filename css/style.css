@@ -2,17 +2,60 @@
    docs/design/portfolio-shell.md. The 640px breakpoint below adds the wider
    layout on top; nothing about the nav band's structure changes above it. */
 
+/* Palette and spacing tokens per docs/design/visual-system.md. Light values
+   here, dark values re-declared in the prefers-color-scheme block below -
+   the doc's own toggle-free mechanism for automatic dark mode. */
+:root {
+  --color-bg: #ffffff;
+  --color-text: #1a1a1a;
+  --color-text-muted: #595959;
+  --color-accent: #1552cc;
+  --color-accent-hover: #103f99;
+  --color-accent-text: #ffffff;
+  --color-focus: #1552cc;
+  --color-surface: #f4f6fa;
+  --color-border: #e0e0e0;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 32px;
+  --space-6: 48px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #121212;
+    --color-text: #e8e8e8;
+    --color-text-muted: #b0b0b0;
+    --color-accent: #5b9dff;
+    --color-accent-hover: #82b4ff;
+    --color-accent-text: #121212;
+    --color-focus: #5b9dff;
+    --color-surface: #1c1f26;
+    --color-border: #333333;
+  }
+}
+
 * {
   box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  padding: 0 16px;
+  padding: 0 var(--space-3);
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 1rem;
   line-height: 1.5;
-  color: #1a1a1a;
-  background: #fff;
+  color: var(--color-text);
+  background: var(--color-bg);
+}
+
+h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.25;
 }
 
 img {
@@ -25,18 +68,27 @@ img {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 8px 16px;
-  padding: 16px 0;
-  border-bottom: 1px solid #e0e0e0;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .nav__brand {
   font-weight: 700;
   text-decoration: none;
-  color: inherit;
+  color: var(--color-accent);
   display: flex;
   align-items: center;
   min-height: 44px;
+}
+
+.nav__brand:hover {
+  text-decoration: underline;
+}
+
+.nav__brand:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
 }
 
 .nav__links {
@@ -51,8 +103,17 @@ img {
   display: flex;
   align-items: center;
   min-height: 44px;
-  color: inherit;
+  color: var(--color-accent);
   text-decoration: none;
+}
+
+.nav__links a:hover {
+  text-decoration: underline;
+}
+
+.nav__links a:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
 }
 
 .nav__links a[aria-current="page"] {
@@ -61,15 +122,24 @@ img {
 }
 
 main {
-  padding: 24px 0 48px;
+  padding: var(--space-4) 0 var(--space-6);
 }
 
 .contact-links {
-  margin-top: 24px;
+  margin-top: var(--space-4);
 }
 
 .contact-links a {
-  color: inherit;
+  color: var(--color-accent);
+}
+
+.contact-links a:hover {
+  text-decoration: underline;
+}
+
+.contact-links a:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
 }
 
 /* Entry list: one column at any width, per docs/design/projects-and-posts.md -
@@ -83,30 +153,113 @@ main {
 }
 
 .entry {
-  padding: 16px 0;
-  border-bottom: 1px solid #e0e0e0;
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
 }
 
 .entry__title {
   margin: 0;
   font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.3;
   /* A long title wraps within the entry rather than truncating or
      overflowing, same rule the nav band applies to a long owner name. */
   overflow-wrap: break-word;
 }
 
 .entry__title a {
-  color: inherit;
+  color: var(--color-accent);
+}
+
+.entry__title a:hover {
+  text-decoration: underline;
+}
+
+.entry__title a:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
 }
 
 .entry__date,
 .entry__summary {
-  margin: 4px 0 0;
+  margin: var(--space-1) 0 0;
 }
 
 .entry__date {
-  color: #595959;
+  color: var(--color-text-muted);
   font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+/* Tag chip, per docs/design/visual-system.md's Tag chip component. The pill
+   treatment (fill, border, radius, tap target) lives on the link, the actual
+   interactive/focusable element - .entry__tags/.entry__tag only clear the
+   list's own default rendering. */
+
+.entry__tags {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-1) 0 0;
+  padding: 0;
+}
+
+.entry__tag a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border-radius: 999px;
+  font-size: 0.875rem;
+  background: var(--color-surface);
+  color: var(--color-accent);
+  border: 1px solid var(--color-border);
+  text-decoration: none;
+}
+
+.entry__tag a:hover {
+  background: var(--color-border);
+}
+
+.entry__tag a:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* The entry page's closing "Back to Projects"/"Back to Posts" link
+   (_layouts/entry.html), styled as a filled button per
+   docs/design/visual-system.md's Button component. */
+
+.entry__back {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-4);
+  border-radius: 6px;
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+  text-decoration: none;
+}
+
+.entry__back:hover {
+  background: var(--color-accent-hover);
+}
+
+.entry__back:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* Empty-state text (_layouts/tag.html and the listing pages' own empty
+   states), per docs/design/visual-system.md's Empty-state component - muted
+   status text, body scale, no hover/focus since it is static, not a control. */
+
+.empty-state {
+  color: var(--color-text-muted);
+  font-size: 1rem;
+  font-weight: 400;
 }
 
 /* Recent area on Home: two labelled subsections stacked below the fixed
@@ -115,12 +268,14 @@ main {
    subsection from the content above it is new. */
 
 .recent {
-  margin-top: 32px;
+  margin-top: var(--space-5);
 }
 
 .recent__heading {
-  margin: 0 0 8px;
-  font-size: 1.125rem;
+  margin: 0 0 var(--space-2);
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.3;
 }
 
 @media (min-width: 640px) {
@@ -132,7 +287,7 @@ main {
   main {
     max-width: 640px;
     margin: 0 auto;
-    padding-left: 16px;
-    padding-right: 16px;
+    padding-left: var(--space-3);
+    padding-right: var(--space-3);
   }
 }

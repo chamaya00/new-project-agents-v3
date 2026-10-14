@@ -1,9 +1,13 @@
 # Security review: this repository as a public repository
 
-Date: 2026-09-10
-Scope: `chamaya00/new-project-agents-v3` at `876b1ef`, and the factory
-release it runs, `chamaya00/agent-factory@v1.18.0`
-(`13948257a2f59f0ac00bac54a7d345efc1edd817`).
+Date: 2026-09-10. Revisited 2026-10-14 before merging: the branch sat
+for five weeks while `main` moved 63 commits, so every version and SHA
+below was re-resolved against what ships today rather than left as
+written. The findings themselves did not change; one widened (6).
+
+Scope: `chamaya00/new-project-agents-v3` at `04ea55f`, and the factory
+release it runs, `chamaya00/agent-factory@v1.24.0`
+(`3151094081a7059a4f469b2742fccc57530197aa`).
 
 The question asked: with this repository public, can anyone outside it
 contaminate an agent run, spend the Claude subscription, or reach the
@@ -102,9 +106,17 @@ strips the run label and comments. A stranger commenting `@claude` on an
 issue that had already had three runs could trigger that. Label griefing,
 not theft.
 
-Fixed upstream: the preflight now refuses on `author_association` as
-well. `CONTRIBUTOR` is refused deliberately - on a public repository that
-is one merged drive-by typo fix, not write access.
+Fixed upstream and **merged** to the factory's `main` on 2026-10-14
+(`chamaya00/agent-factory#39`): the preflight now refuses on
+`author_association` as well. `CONTRIBUTOR` is refused deliberately - on
+a public repository that is one merged drive-by typo fix, not write
+access.
+
+Merged is not running. The pin below is `v1.24.0`, which predates that
+gate, and no release carrying it exists yet - the latest tag is
+`v1.40.0`, and the merge included the bump to `1.41.0` precisely so one
+could be cut. Until it is cut and the pin moved, this repository runs the
+pre-gate preflight. That is the pin behaving correctly, not a gap.
 
 ### 5. Memory files steer every future run - MEDIUM, partly fixed
 
@@ -124,6 +136,15 @@ token, so this is compute abuse rather than disclosure. GitHub's default
 only holds approval for *first-time* contributors - one merged pull
 request promotes an account past it. See the checklist below.
 
+Widened since the first pass. `tests/check.sh` now builds through
+Bundler against a committed `Gemfile`, and `bundle install` runs whatever
+that file names - a gem, a git source, a native extension with a build
+step. So the executable surface of a fork's pull request is no longer the
+script alone. `vercel.json` names the same `bundle install` as its
+install command, which puts it on the deploy path too. Both files are now
+in CODEOWNERS for that reason; neither is a new class of problem, only
+more of the same one.
+
 ### Not problems
 
 - **Label triggering.** `issues: [labeled]` needs triage permission.
@@ -135,16 +156,17 @@ request promotes an account past it. See the checklist below.
 ## What changed here
 
 - `.github/workflows/*.yml` - all four callers pinned to
-  `13948257a2f59f0ac00bac54a7d345efc1edd817`, release kept as a comment.
-- `.github/CODEOWNERS` - adds `/tests/`, `/scripts/`, `/.claude/memory/`
-  and `/.claude/`.
+  `3151094081a7059a4f469b2742fccc57530197aa`, release kept as a comment.
+- `.github/CODEOWNERS` - adds `/tests/`, `/scripts/`, `/.claude/memory/`,
+  `/.claude/`, and (from the revisit) `/Gemfile`, `/Gemfile.lock` and
+  `/vercel.json`.
 - `tests/check.sh` - two checks that the pins stay SHAs and keep naming
   their release. Both were made to fail on purpose before being kept.
 
-Upstream, on `chamaya00/agent-factory`, branch
-`claude/harden-agent-run-untrusted-input`: the `author_association` gate,
-the corrected allowlist comment, and four preflight cases. **Nothing here
-runs that code until the pin above is moved to a release containing it.**
+Upstream, `chamaya00/agent-factory#39` is merged: the
+`author_association` gate, the corrected allowlist comment, and four
+preflight cases. **Nothing here runs that code until a release carrying
+it is cut and the pin above is moved to it.**
 
 ## Only the owner can do these
 
@@ -157,5 +179,9 @@ runs that code until the pin above is moved to a release containing it.**
 4. **Rotate `CLAUDE_CODE_OAUTH_TOKEN`** if any run has ever executed
    against an issue carrying a comment from outside. Cheap, and finding 1
    has no other remedy after the fact.
-5. **Review, then merge** the factory branch, cut a release, and bump the
-   SHA here.
+5. **Cut a factory release** - `#39` is merged and carries the `1.41.0`
+   bump, but no tag exists for it, so the gate runs nowhere yet.
+6. **Then move the pin** with `/update-agents`, not by hand. It is
+   `v1.24.0` here against `v1.41.0` there - 17 releases of drift - and
+   the check added above fails a bump that rewrites the tag comment
+   without the SHA.

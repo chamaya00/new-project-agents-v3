@@ -14,3 +14,9 @@ State an acceptance criterion as the observable outcome and leave the check to
 the engineer - #19's sixth criterion prescribed "extending the existing
 root-absolute-path grep to Home's built output", which cannot pass on a correct
 build, and the engineer had to redesign the check to honour the intent behind it.
+
+Name the resolved form in a criterion about a link on a generated page, never
+only that one is present - #69's "contains a link back to its collection's
+listing page" is satisfied by a 404, and `tests/check.sh`'s root-absolute grep
+catches only `href="/..."`, so a bare relative path passes both. The existing
+Home check that greps `href="[^"]*/posts.html"` is the shape that holds.
