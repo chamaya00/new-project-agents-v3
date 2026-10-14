@@ -3,7 +3,7 @@ name: agent-run
 # Thin caller. One agent at a time, queued at the repo level by the factory
 # workflow, capped in turns and minutes.
 #
-# Pinned to a release, like the other callers. See ci.yml for why.
+# Pinned to a release by commit SHA, like the other callers. See ci.yml for why.
 #
 # Requires the repository secret CLAUDE_CODE_OAUTH_TOKEN. The App id and key
 # are optional but strongly preferred: without them, pull requests land in an
@@ -58,7 +58,7 @@ on:
 
 jobs:
   agent:
-    uses: chamaya00/agent-factory/.github/workflows/agent-run.yml@v1.24.0
+    uses: chamaya00/agent-factory/.github/workflows/agent-run.yml@3151094081a7059a4f469b2742fccc57530197aa # v1.24.0
     with:
       issue-number: ${{ inputs.issue-number || '' }}
       max-turns: 80
